@@ -1,0 +1,32 @@
+{
+  "name": "wavepicgen",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "WavePicGen — an academic/manual-quality digital timing (waveform) diagram editor",
+  "license": "MIT",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 4173",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "snapshot": "tsx scripts/snapshot.ts",
+    "check": "npm run typecheck && npm test && npm run build"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/node": "^25.9.3",
+    "@vitest/coverage-v8": "^4.1.8",
+    "happy-dom": "^20.10.3",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
+  },
+  "dependencies": {
+    "json5": "^2.2.3"
+  }
+}
