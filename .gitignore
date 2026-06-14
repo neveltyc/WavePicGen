@@ -2,6 +2,10 @@ node_modules/
 dist/
 coverage/
 tmp/
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/android/
+src-tauri/icons/ios/
 *.local
 .DS_Store
 .vite/

@@ -11,6 +11,8 @@ WavePicGen 把 [WaveDrom](https://wavedrom.com/) 式的「**文本可编辑 · �
 
 ![边沿与关系标注](docs/images/edges.png)
 
+![测量标尺与 @时刻关系](docs/images/relations.png)
+
 | 总线 / 高阻 / 状态 / 间隔 | 分组 | 分频与相位（亚周期） |
 | --- | --- | --- |
 | ![bus](docs/images/bus.png) | ![groups](docs/images/groups.png) | ![phase](docs/images/phase.png) |
@@ -23,8 +25,10 @@ WavePicGen 把 [WaveDrom](https://wavedrom.com/) 式的「**文本可编辑 · �
 - **专业编辑器（CodeMirror）**：语法高亮、行号、撤销/重做、`Tab` 缩进、**行内解析错误提示**（红色波浪线定位到行/列）。
 - **画布直接编辑**：在预览中**点击信号单元循环 0/1/x/z**，或**横向拖拽改沿**（把电平刷过若干周期＝移动跳变 / 加延迟）；改动回写文档模型与源码，GUI ↔ 模型 ↔ 文本三向同步。
 - **可编辑波形格式**：纯文本、可手写、可脚本生成、Git diff 友好；完全 **WaveJSON 兼容**（已有 WaveDrom 图可直接粘贴使用）。
-- **矢量优先**：内部以 **SVG** 为渲染产物；导出 **SVG（矢量）/ PNG / JPEG**（PNG/JPEG 可设 1×–4× 缩放）、以及 **PDF**（经浏览器打印为矢量 PDF，字体与 CJK 完美还原）。
-- **边沿与关系标注**：`node` 命名锚点 + `edge` 箭头（直线/样条/折线、单双向箭头、文字标签），用于 setup/hold/传播延迟等时序关系——把波形升级为「时序规格」。
+- **矢量优先**：内部以 **SVG** 为渲染产物；导出 **SVG / PNG / JPEG**（1×–4×）、**PDF**（经浏览器打印为矢量 PDF，字体与 CJK 完美还原），以及 **tikz-timing（.tex）** 供 LaTeX 论文直接 `\input`。
+- **边沿与关系标注**：`node` 命名锚点 + `edge` 箭头（直线/样条/折线、单双向箭头、文字标签）；以及 **typed relations + 测量标尺**，锚点支持 `信号名@时刻`（含小数），用于 setup/hold/传播延迟与区间测量——把波形升级为「时序规格」。
+- **编辑时间轴**：命令 `insert`/`delay`/`delete` 在所有信号上**插入/删除对齐的时间列**（真正的「加延迟」）。
+- **桌面打包（Tauri）**：复用同一前端，产出 Windows / Linux 原生应用（见 [`docs/07`](docs/07-desktop-tauri.md)）。
 - **手册级排版**：白底深线、字体可控、网格对齐、时钟箭头、总线六边形、高阻中线、未知态斜纹、间隔标记、信号分组、周期刻度、表头/表尾。
 - **分频与相位**：`period` 分频、`phase` 相位偏移（含小数 → 亚周期/异步的雏形，补 WaveDrom「跳变只能落周期边界」的短板）。
 - **跨平台 · 易部署**：纯前端静态应用（Vite + TypeScript），在任意浏览器运行；`dist/` 可丢到任意静态托管，Windows / Linux 一致。
@@ -138,19 +142,22 @@ npm run snapshot    # 把内置示例渲染为 SVG+PNG（用 resvg），便于�
 | [04 架构方案](docs/04-architecture-proposal.md) | 分层、依赖规则、Reuse Map、Build-vs-Reuse |
 | [05 波形格式草案](docs/05-waveform-format-draft.md) | 文档模型 + DSL + 命令 |
 | [06 路线图](docs/06-roadmap.md) | 里程碑、风险、待定决策 |
+| [07 桌面打包](docs/07-desktop-tauri.md) | Tauri 桌面外壳：结构、依赖、构建 |
 
 ## 🗺️ 路线图（节选）
 
 当前为**网页渲染**实现（文档中的「先 TS」阶段）。引擎已与 GUI 解耦，后续可平滑推进：
 
 - [x] **边沿/关系标注**：`node` + `edge` 箭头与标签（setup/hold/delay）。✅
-- [ ] **测量标尺**与带 `@时刻` 锚点的 typed relations。
+- [x] **测量标尺**与带 `@时刻` 锚点的 typed relations。✅
 - [x] 画布**点击直接编辑**：点击信号单元循环 0/1/x/z（回写模型与文本）。✅
 - [x] 画布**拖拽改沿**：横向拖拽把电平刷过若干周期（移动跳变 / 加延迟）。✅
-- [ ] 拖拽**总线/时钟**单元、插入/删除周期；保留注释的「最小文本补丁」式回写。
-- [ ] **真实数边沿**：把 `phase` 的亚周期能力推广为任意时刻跳变。
-- [ ] **PDF / EPS** 导出；**tikz-timing** 导出后端（服务 LaTeX 用户）。
-- [ ] **Tauri** 桌面外壳打包（复用同一引擎）；命令行 `wavepicgen` 批量出图。
+- [x] **插入/删除周期**：对齐的「加延迟」时间列（命令 `insert`/`delay`/`delete`）。✅
+- [x] **PDF** 导出 + **tikz-timing** 导出后端（服务 LaTeX 用户）。✅
+- [x] **Tauri** 桌面外壳打包脚手架（复用同一引擎）+ 命令行 `wavepicgen` 批量出图。✅
+- [ ] **真实数边沿**：把 `phase` 的亚周期能力推广为任意时刻跳变（深度模型改造）。
+- [ ] 拖拽**总线/时钟**单元；保留注释的「最小文本补丁」式回写。
+- [ ] **EPS** 导出（当前矢量经 SVG/PDF，EPS 需外部转换）。
 
 ## 许可
 
