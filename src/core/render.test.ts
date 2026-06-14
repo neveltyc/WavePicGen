@@ -83,4 +83,17 @@ describe('render', () => {
     const r = render(`{ signal: [ { name: 'a', wave: '=.=.=.', data: ['only'] } ] }`);
     expect(r.warnings.some((w) => /data label/i.test(w))).toBe(true);
   });
+
+  it('includes a hitMap describing geometry for click editing', () => {
+    const r = render(`{ signal: [ { name: 'a', wave: '0101' }, {}, { name: 'b', wave: 'pp' } ] }`);
+    expect(r.hitMap).toBeDefined();
+    expect(r.hitMap!.cw).toBeGreaterThan(0);
+    expect(r.hitMap!.rows).toHaveLength(3);
+    expect(r.hitMap!.rows[0]).toMatchObject({ bricks: 4, isSpacer: false });
+    expect(r.hitMap!.rows[1].isSpacer).toBe(true);
+  });
+
+  it('omits the hitMap on a parse error', () => {
+    expect(render('{ broken').hitMap).toBeUndefined();
+  });
 });

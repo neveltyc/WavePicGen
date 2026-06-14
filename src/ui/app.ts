@@ -8,6 +8,7 @@ import {
   applyCommand,
   parseSource,
   serializeDoc,
+  cycleBrick,
   examples,
   defaultSource,
   type RenderResult,
@@ -25,6 +26,7 @@ const HELP_HTML = `
   <button class="close" data-help-close>✕ Close</button>
   <h2>WavePicGen — quick reference</h2>
   <p>Edit the WaveJSON / JSON5 source on the left; the diagram updates live. Use the command bar for quick edits and exports.</p>
+  <p><strong>Tip:</strong> click a signal's cycle in the preview to toggle its state (0 → 1 → x → z).</p>
   <h3>Wave characters</h3>
   <table>
     <tr><td>p P n N</td><td>Clock — p/P positive, n/N negative; capitals add an active-edge arrow.</td></tr>
@@ -204,6 +206,8 @@ export class App {
       btn.addEventListener('click', () => this.onZoom(btn.getAttribute('data-z')!)),
     );
 
+    this.preview.addEventListener('click', (e) => this.onPreviewClick(e));
+
     this.setupSplitter();
 
     document.addEventListener('keydown', (e) => {
@@ -296,6 +300,35 @@ export class App {
       svg.style.height = `${this.last.height * this.zoom}px`;
     }
     this.zlabel.textContent = `${Math.round(this.zoom * 100)}%`;
+  }
+
+  /** Click a signal's cycle in the preview to cycle its state (0 → 1 → x → z). */
+  private onPreviewClick(e: MouseEvent): void {
+    const hm = this.last?.hitMap;
+    if (!this.last || this.last.error || !hm) return;
+    const svg = this.preview.querySelector('svg');
+    if (!svg) return;
+    const rect = svg.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const ux = (e.clientX - rect.left) * (this.last.width / rect.width);
+    const uy = (e.clientY - rect.top) * (this.last.height / rect.height);
+
+    const row = Math.floor((uy - hm.topY) / hm.rowH);
+    if (row < 0 || row >= hm.rows.length) return;
+    const rowTop = hm.topY + row * hm.rowH;
+    if (uy < rowTop || uy > rowTop + hm.waveHeight) return;
+
+    const r = hm.rows[row];
+    if (r.isSpacer || r.bricks === 0) return;
+    const brick = Math.floor((ux - hm.x0 - r.phase * hm.cw) / (hm.cw * r.period));
+    if (brick < 0 || brick >= r.bricks) return;
+
+    const next = cycleBrick(this.editor.getValue(), row, brick);
+    if (next) {
+      this.setSource(next);
+      this.setStatus(`Toggled cycle ${brick} of signal ${row + 1} (click cycles 0/1/x/z).`, 'ok');
+    }
   }
 
   private setStatus(msg: string, kind: 'ok' | 'warn' | 'error'): void {

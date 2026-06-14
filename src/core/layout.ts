@@ -24,11 +24,22 @@ export type Shape =
   | { t: 'line'; x1: number; y1: number; x2: number; y2: number; cls?: string }
   | { t: 'text'; x: number; y: number; s: string; cls?: string; anchor?: 'start' | 'middle' | 'end'; rotate?: number };
 
+/** Geometry needed to map a click in the rendered SVG back to a (row, brick). */
+export interface HitMap {
+  x0: number;
+  cw: number;
+  topY: number;
+  rowH: number;
+  waveHeight: number;
+  rows: Array<{ period: number; phase: number; bricks: number; isSpacer: boolean }>;
+}
+
 export interface LayoutResult {
   width: number;
   height: number;
   shapes: Shape[];
   theme: Theme;
+  hitMap: HitMap;
 }
 
 function levelY(level: string, yHi: number, yLo: number, yMid: number): number {
@@ -142,7 +153,21 @@ export function layout(model: NormModel, theme: Theme = defaultTheme): LayoutRes
     shapes.push({ t: 'text', x: x0, y: height - t.marginBottom + t.headFontSize / 2, s: model.foot.text, cls: 'foot', anchor: 'start' });
   }
 
-  return { width, height, shapes, theme: t };
+  const hitMap: HitMap = {
+    x0,
+    cw,
+    topY,
+    rowH,
+    waveHeight: t.waveHeight,
+    rows: model.rows.map((r) => ({
+      period: r.period,
+      phase: r.phase,
+      bricks: r.bricks.length,
+      isSpacer: r.isSpacer,
+    })),
+  };
+
+  return { width, height, shapes, theme: t, hitMap };
 }
 
 /** Draw one signal's wave across the cycles. */

@@ -138,6 +138,7 @@ select { padding-right: 8px; }
 .preview-canvas { transform-origin: top left; width: max-content; }
 .preview-canvas svg {
   display: block; box-shadow: var(--shadow); border-radius: 4px; background: #fff;
+  cursor: pointer; /* click a cycle to toggle its state */
 }
 
 /* ---------- status bar ---------- */

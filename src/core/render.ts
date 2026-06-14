@@ -6,6 +6,7 @@
 import { parseSource } from './parse';
 import { normalize } from './model';
 import { layout } from './layout';
+import type { HitMap } from './layout';
 import { toSvg } from './svg';
 import { defaultTheme } from './theme';
 import type { Theme } from './theme';
@@ -19,6 +20,8 @@ export interface RenderResult {
   error?: string;
   /** Non-fatal warnings (e.g. unknown wave chars). */
   warnings: string[];
+  /** Geometry for mapping clicks back to bricks (absent on parse error). */
+  hitMap?: HitMap;
 }
 
 function errorCard(message: string): { svg: string; width: number; height: number } {
@@ -54,6 +57,7 @@ export function render(source: string, theme: Theme = defaultTheme): RenderResul
       width: result.width,
       height: result.height,
       warnings: model.warnings.map((w) => w.message),
+      hitMap: result.hitMap,
     };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
