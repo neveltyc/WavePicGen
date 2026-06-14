@@ -105,21 +105,10 @@ select { padding-right: 8px; }
 .splitter { width: 6px; cursor: col-resize; background: transparent; flex: 0 0 auto; }
 .splitter:hover, .splitter.active { background: var(--accent); opacity: 0.6; }
 
-/* ---------- editor ---------- */
-.editor-wrap { flex: 1 1 auto; display: flex; min-height: 0; overflow: hidden; background: var(--panel); }
-.gutter {
-  flex: 0 0 auto; text-align: right; padding: 12px 8px 12px 12px;
-  font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
-  color: var(--text-faint); background: var(--panel);
-  user-select: none; overflow: hidden; white-space: pre; border-right: 1px solid var(--border-soft);
-}
-.editor-wrap textarea {
-  flex: 1 1 auto; resize: none; border: none; outline: none;
-  padding: 12px; margin: 0;
-  font-family: var(--mono); font-size: 12.5px; line-height: 1.55;
-  color: var(--text); background: var(--panel); tab-size: 2;
-  white-space: pre; overflow: auto;
-}
+/* ---------- editor (CodeMirror host) ---------- */
+.editor-host { flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--panel); }
+.editor-host .cm-editor { height: 100%; }
+.editor-host .cm-scroller { overflow: auto; }
 
 .cmdbar {
   flex: 0 0 auto; display: flex; align-items: center; gap: 8px;

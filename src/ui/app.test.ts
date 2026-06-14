@@ -12,6 +12,11 @@ function enter(input: HTMLInputElement, value: string): void {
   input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 }
 
+/** CodeMirror renders the doc into .cm-content; read it back for assertions. */
+function editorText(root: HTMLElement): string {
+  return root.querySelector('.cm-content')?.textContent ?? '';
+}
+
 describe('App (UI smoke)', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -20,25 +25,21 @@ describe('App (UI smoke)', () => {
   it('boots and renders a diagram into the preview', () => {
     const root = makeRoot();
     new App(root).start();
-    const svg = root.querySelector('#preview svg');
-    expect(svg).toBeTruthy();
-    const editor = root.querySelector('#editor') as HTMLTextAreaElement;
-    expect(editor.value).toContain('signal');
+    expect(root.querySelector('#preview svg')).toBeTruthy();
+    expect(root.querySelector('.cm-editor')).toBeTruthy();
+    expect(editorText(root)).toContain('signal');
     expect(root.querySelector('#statusMsg')?.textContent).toContain('Rendered');
   });
 
-  it('runs a command from the command bar and updates the source + preview', () => {
+  it('runs commands from the command bar and updates the editor + preview', () => {
     const root = makeRoot();
     new App(root).start();
-    const editor = root.querySelector('#editor') as HTMLTextAreaElement;
-    editor.value = '{ signal: [] }';
-
     const cmd = root.querySelector('#cmd') as HTMLInputElement;
+    enter(cmd, 'clear');
     enter(cmd, 'add clock CLK cycles=3');
-
-    expect(editor.value).toContain('CLK');
+    expect(editorText(root)).toContain('CLK');
     expect(root.querySelector('#preview svg')).toBeTruthy();
-    expect(cmd.value).toBe(''); // input cleared after run
+    expect(cmd.value).toBe('');
   });
 
   it('shows an error in the status bar for an unknown command', () => {
@@ -46,8 +47,7 @@ describe('App (UI smoke)', () => {
     new App(root).start();
     const cmd = root.querySelector('#cmd') as HTMLInputElement;
     enter(cmd, 'frobnicate');
-    const status = root.querySelector('#statusbar') as HTMLElement;
-    expect(status.classList.contains('error')).toBe(true);
+    expect((root.querySelector('#statusbar') as HTMLElement).classList.contains('error')).toBe(true);
   });
 
   it('toggles the help modal open and closed', () => {

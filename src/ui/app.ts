@@ -14,6 +14,7 @@ import {
   type ExportFormat,
 } from '../core';
 import { exportDiagram } from './exporter';
+import { Editor } from './editor';
 
 const STORAGE_KEY = 'wavepicgen.source';
 const THEME_KEY = 'wavepicgen.theme';
@@ -79,10 +80,7 @@ function template(): string {
     <main class="split" id="split">
       <section class="pane editor-pane" id="editorPane">
         <div class="pane-head"><span>Source · WaveJSON / JSON5</span></div>
-        <div class="editor-wrap">
-          <div class="gutter" id="gutter">1</div>
-          <textarea id="editor" spellcheck="false" autocomplete="off" autocapitalize="off"></textarea>
-        </div>
+        <div class="editor-host" id="editorHost"></div>
         <div class="cmdbar">
           <span class="prompt">›</span>
           <input id="cmd" type="text" placeholder="command…  e.g.  add clock CLK   ·   type 'help'" autocomplete="off" />
@@ -127,8 +125,8 @@ function debounce<F extends (...args: never[]) => void>(fn: F, ms: number): F {
 
 export class App {
   private root: HTMLElement;
-  private editor!: HTMLTextAreaElement;
-  private gutter!: HTMLElement;
+  private editor!: Editor;
+  private editorHost!: HTMLElement;
   private cmd!: HTMLInputElement;
   private preview!: HTMLElement;
   private previewScroll!: HTMLElement;
@@ -148,8 +146,9 @@ export class App {
     this.root.innerHTML = template();
     this.query();
     this.restoreTheme();
-    this.editor.value = localStorage.getItem(STORAGE_KEY) ?? defaultSource;
-    this.updateGutter();
+    const saved = localStorage.getItem(STORAGE_KEY) ?? defaultSource;
+    const debounced = debounce(() => this.renderNow(), 120);
+    this.editor = new Editor(this.editorHost, { doc: saved, onChange: () => debounced() });
     this.wire();
     this.renderNow();
   }
@@ -160,8 +159,7 @@ export class App {
       if (!el) throw new Error(`Missing element: ${sel}`);
       return el as T;
     };
-    this.editor = q<HTMLTextAreaElement>('#editor');
-    this.gutter = q('#gutter');
+    this.editorHost = q('#editorHost');
     this.cmd = q<HTMLInputElement>('#cmd');
     this.preview = q('#preview');
     this.previewScroll = q('#previewScroll');
@@ -172,16 +170,6 @@ export class App {
   }
 
   private wire(): void {
-    const debounced = debounce(() => this.renderNow(), 120);
-    this.editor.addEventListener('input', () => {
-      this.updateGutter();
-      debounced();
-    });
-    this.editor.addEventListener('scroll', () => {
-      this.gutter.scrollTop = this.editor.scrollTop;
-    });
-    this.editor.addEventListener('keydown', (e) => this.onEditorKey(e));
-
     this.cmd.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -226,25 +214,13 @@ export class App {
     });
   }
 
-  private onEditorKey(e: KeyboardEvent): void {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const ta = this.editor;
-      const s = ta.selectionStart;
-      const en = ta.selectionEnd;
-      ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(en);
-      ta.selectionStart = ta.selectionEnd = s + 2;
-    }
-  }
-
   private setSource(src: string): void {
-    this.editor.value = src;
-    this.updateGutter();
+    this.editor.setValue(src);
     this.renderNow();
   }
 
   private renderNow(): void {
-    const src = this.editor.value;
+    const src = this.editor.getValue();
     localStorage.setItem(STORAGE_KEY, src);
     const result = render(src);
     this.last = result;
@@ -262,7 +238,7 @@ export class App {
 
   private runCommand(line: string): void {
     if (!line.trim()) return;
-    const res = applyCommand(this.editor.value, line);
+    const res = applyCommand(this.editor.getValue(), line);
     if (res.error) {
       this.setStatus(res.error, 'error');
       return;
@@ -276,7 +252,7 @@ export class App {
 
   private format(): void {
     // Reformat by round-tripping the document through the parser/serializer.
-    const parsed = parseSource(this.editor.value);
+    const parsed = parseSource(this.editor.getValue());
     if (parsed.error || !parsed.doc) {
       this.setStatus(`Cannot format: ${parsed.error?.message ?? 'parse error'}`, 'error');
       return;
@@ -318,12 +294,6 @@ export class App {
       svg.style.height = `${this.last.height * this.zoom}px`;
     }
     this.zlabel.textContent = `${Math.round(this.zoom * 100)}%`;
-  }
-
-  private updateGutter(): void {
-    const lines = this.editor.value.split('\n').length;
-    this.gutter.textContent = Array.from({ length: lines }, (_, i) => String(i + 1)).join('\n');
-    this.gutter.scrollTop = this.editor.scrollTop;
   }
 
   private setStatus(msg: string, kind: 'ok' | 'warn' | 'error'): void {
