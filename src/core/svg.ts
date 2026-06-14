@@ -53,7 +53,11 @@ function styleBlock(t: Theme): string {
     ${s} .grp{fill:none;stroke:${t.groupColor};stroke-width:1.2;}
     ${s} .grp-label{fill:${t.tickColor};font-size:${t.nameFontSize}px;}
     ${s} .gapbg{fill:${t.background};stroke:none;}
-    ${s} .gap{stroke:${t.stroke};stroke-width:1.2;}`;
+    ${s} .gap{stroke:${t.stroke};stroke-width:1.2;}
+    ${s} .edge{fill:none;stroke:${t.edgeColor};stroke-width:1.2;}
+    ${s} .edge-arrow{fill:${t.edgeColor};stroke:none;}
+    ${s} .edge-label{fill:${t.edgeColor};font-size:${t.dataFontSize}px;}
+    ${s} .edge-label-bg{fill:${t.background};stroke:none;opacity:0.85;}`;
 }
 
 function defsBlock(t: Theme): string {

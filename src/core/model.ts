@@ -59,11 +59,19 @@ export interface NormGroup {
   depth: number;
 }
 
+/** A named anchor point (from a signal's `node` string) for drawing edges. */
+export interface NodeAnchor {
+  row: number;
+  char: number;
+}
+
 export interface NormModel {
   rows: NormSignal[];
   groups: NormGroup[];
   cycles: number;
   hscale: number;
+  nodes: Record<string, NodeAnchor>;
+  edges: string[];
   head?: HeadFoot;
   foot?: HeadFoot;
   warnings: WaveWarning[];
@@ -83,6 +91,7 @@ function isLaneArray(x: Lane): x is LaneArray {
 export function normalize(doc: WaveDoc): NormModel {
   const rows: NormSignal[] = [];
   const groups: NormGroup[] = [];
+  const nodes: Record<string, NodeAnchor> = {};
   const warnings: WaveWarning[] = [];
 
   const walk = (items: Lane[], depth: number): void => {
@@ -125,6 +134,7 @@ export function normalize(doc: WaveDoc): NormModel {
           phase = 0;
         }
         phase = Math.min(phase, MAX_CYCLES);
+        const rowIndex = rows.length;
         rows.push({
           name,
           bricks: isSpacer ? [] : resolveWave(waveStr, toDataArray(item.data), warnings),
@@ -133,6 +143,14 @@ export function normalize(doc: WaveDoc): NormModel {
           depth,
           isSpacer,
         });
+        if (typeof item.node === 'string') {
+          for (let i = 0; i < item.node.length; i++) {
+            const ch = item.node[i];
+            if (ch && ch !== '.' && ch !== ' ' && !(ch in nodes)) {
+              nodes[ch] = { row: rowIndex, char: i };
+            }
+          }
+        }
       }
     }
   };
@@ -159,6 +177,8 @@ export function normalize(doc: WaveDoc): NormModel {
     groups,
     cycles,
     hscale,
+    nodes,
+    edges: Array.isArray(doc.edge) ? doc.edge : [],
     head: doc.head,
     foot: doc.foot,
     warnings,

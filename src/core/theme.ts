@@ -39,6 +39,8 @@ export interface Theme {
   hatchColor: string;
   tickColor: string;
   groupColor: string;
+  /** Colour for edges / relation arrows and their labels. */
+  edgeColor: string;
 
   /** Fill palette for data/bus values, keyed by wave digit (0 = '='). */
   dataPalette: Record<number, string>;
@@ -72,6 +74,7 @@ export const defaultTheme: Theme = {
   hatchColor: '#c9ced6',
   tickColor: '#8a93a2',
   groupColor: '#9aa3b2',
+  edgeColor: '#2b5fa6',
 
   dataPalette: {
     0: '#e9eef5',

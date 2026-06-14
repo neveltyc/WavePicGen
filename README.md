@@ -9,6 +9,8 @@ WavePicGen 把 [WaveDrom](https://wavedrom.com/) 式的「**文本可编辑 · �
 
 ![基础读时序](docs/images/basic.png)
 
+![边沿与关系标注](docs/images/edges.png)
+
 | 总线 / 高阻 / 状态 / 间隔 | 分组 | 分频与相位（亚周期） |
 | --- | --- | --- |
 | ![bus](docs/images/bus.png) | ![groups](docs/images/groups.png) | ![phase](docs/images/phase.png) |
@@ -20,6 +22,7 @@ WavePicGen 把 [WaveDrom](https://wavedrom.com/) 式的「**文本可编辑 · �
 - **图形界面 + 命令输入**：左侧编辑可编辑的波形源（WaveJSON / JSON5），右侧实时渲染；底部命令栏支持 `add clock CLK`、`set hscale=2`、`export png` 等命令——三者驱动**同一个文档模型**。
 - **可编辑波形格式**：纯文本、可手写、可脚本生成、Git diff 友好；完全 **WaveJSON 兼容**（已有 WaveDrom 图可直接粘贴使用）。
 - **矢量优先**：内部以 **SVG** 为渲染产物；导出 **SVG（矢量）/ PNG / JPEG**（PNG/JPEG 可设 1×–4× 缩放）。
+- **边沿与关系标注**：`node` 命名锚点 + `edge` 箭头（直线/样条/折线、单双向箭头、文字标签），用于 setup/hold/传播延迟等时序关系——把波形升级为「时序规格」。
 - **手册级排版**：白底深线、字体可控、网格对齐、时钟箭头、总线六边形、高阻中线、未知态斜纹、间隔标记、信号分组、周期刻度、表头/表尾。
 - **分频与相位**：`period` 分频、`phase` 相位偏移（含小数 → 亚周期/异步的雏形，补 WaveDrom「跳变只能落周期边界」的短板）。
 - **跨平台 · 易部署**：纯前端静态应用（Vite + TypeScript），在任意浏览器运行；`dist/` 可丢到任意静态托管，Windows / Linux 一致。
@@ -124,8 +127,9 @@ npm run snapshot    # 把内置示例渲染为 SVG+PNG（用 resvg），便于�
 
 当前为**网页渲染**实现（文档中的「先 TS」阶段）。引擎已与 GUI 解耦，后续可平滑推进：
 
+- [x] **边沿/关系标注**：`node` + `edge` 箭头与标签（setup/hold/delay）。✅
+- [ ] **测量标尺**与带 `@时刻` 锚点的 typed relations。
 - [ ] 画布上的**鼠标直接编辑**（拖拽改沿、加延迟）—— 对标 TimeGen。
-- [ ] **关系标注一等公民**：setup/hold/delay 箭头、测量标尺。
 - [ ] **真实数边沿**：把 `phase` 的亚周期能力推广为任意时刻跳变。
 - [ ] **PDF / EPS** 导出；**tikz-timing** 导出后端（服务 LaTeX 用户）。
 - [ ] **Tauri** 桌面外壳打包（复用同一引擎）；命令行 `wavepicgen` 批量出图。

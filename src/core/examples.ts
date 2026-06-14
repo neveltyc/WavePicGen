@@ -56,6 +56,23 @@ export const examples: Example[] = [
 }`,
   },
   {
+    id: 'edges',
+    title: 'Edges: setup / hold / clock-to-out',
+    source: `{
+  signal: [
+    { name: 'clk', wave: 'P.P.P.P.', node: '..a.c...' },
+    { name: 'd',   wave: 'x.=.....', data: ['valid'], node: '.b......' },
+    { name: 'q',   wave: 'x...=...', data: ['Q'],     node: '....e...' },
+  ],
+  edge: [
+    'b~>a tSU',
+    'a~>e tCO',
+    'a-|c',
+  ],
+  head: { text: 'Setup, hold and clock-to-output', tick: 0 },
+}`,
+  },
+  {
     id: 'phase',
     title: 'Period & phase (sub-cycle taste)',
     source: `{

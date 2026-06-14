@@ -8,7 +8,9 @@
  */
 import { isBoxKind } from './bricks';
 import type { Brick } from './bricks';
-import type { NormModel, NormSignal } from './model';
+import { parseEdge } from './edges';
+import type { ParsedEdge } from './edges';
+import type { NodeAnchor, NormModel, NormSignal } from './model';
 import { defaultTheme } from './theme';
 import type { Theme } from './theme';
 import { nf } from './util';
@@ -113,6 +115,25 @@ export function layout(model: NormModel, theme: Theme = defaultTheme): LayoutRes
     shapes.push({ t: 'path', d: `M ${nf(bx + 5)} ${nf(yTop)} q ${-5} 0 ${-5} 5 L ${nf(bx)} ${nf(yBot - 5)} q 0 5 5 5`, cls: 'grp' });
     if (g.label) {
       shapes.push({ t: 'text', x: bx - 9, y: (yTop + yBot) / 2, s: g.label, cls: 'grp-label', anchor: 'middle', rotate: -90 });
+    }
+  }
+
+  // ---- edges / relations (drawn on top of the waves) ----
+  if (model.edges.length > 0) {
+    const nodePoint = (a: NodeAnchor): Point => {
+      const row = model.rows[a.row];
+      return [
+        x0 + (row.phase + a.char * row.period) * cw,
+        topY + a.row * rowH + t.waveHeight / 2,
+      ];
+    };
+    for (const spec of model.edges) {
+      const e = parseEdge(spec);
+      if (!e) continue;
+      const a = model.nodes[e.from];
+      const b = model.nodes[e.to];
+      if (!a || !b) continue;
+      drawEdge(shapes, nodePoint(a), nodePoint(b), e, t);
     }
   }
 
@@ -249,6 +270,63 @@ function addClockArrow(shapes: Shape[], x: number, yMid: number, dir: 'up' | 'do
       ? [[x - s, yMid + s], [x + s, yMid + s], [x, yMid - s]]
       : [[x - s, yMid - s], [x + s, yMid - s], [x, yMid + s]];
   shapes.push({ t: 'poly', pts, closed: true, cls: 'arrow' });
+}
+
+function drawEdge(shapes: Shape[], p1: Point, p2: Point, e: ParsedEdge, t: Theme): void {
+  const [x1, y1] = p1;
+  const [x2, y2] = p2;
+  let d: string;
+  let endAngle: number;
+  let startAngle: number;
+
+  if (e.style === 'spline') {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.hypot(dx, dy) || 1;
+    const off = Math.min(40, len * 0.3);
+    const cx = (x1 + x2) / 2 + (-dy / len) * off;
+    const cy = (y1 + y2) / 2 + (dx / len) * off;
+    d = `M ${nf(x1)} ${nf(y1)} Q ${nf(cx)} ${nf(cy)} ${nf(x2)} ${nf(y2)}`;
+    endAngle = Math.atan2(y2 - cy, x2 - cx);
+    startAngle = Math.atan2(y1 - cy, x1 - cx);
+  } else if (e.style === 'ortho') {
+    d = `M ${nf(x1)} ${nf(y1)} L ${nf(x2)} ${nf(y1)} L ${nf(x2)} ${nf(y2)}`;
+    endAngle = y2 >= y1 ? Math.PI / 2 : -Math.PI / 2;
+    startAngle = x1 <= x2 ? Math.PI : 0;
+  } else {
+    d = `M ${nf(x1)} ${nf(y1)} L ${nf(x2)} ${nf(y2)}`;
+    endAngle = Math.atan2(y2 - y1, x2 - x1);
+    startAngle = Math.atan2(y1 - y2, x1 - x2);
+  }
+
+  shapes.push({ t: 'path', d, cls: 'edge' });
+  if (e.arrowEnd) shapes.push({ t: 'poly', pts: arrowHead(x2, y2, endAngle), closed: true, cls: 'edge-arrow' });
+  if (e.arrowStart) shapes.push({ t: 'poly', pts: arrowHead(x1, y1, startAngle), closed: true, cls: 'edge-arrow' });
+
+  if (e.label) {
+    const lx = (x1 + x2) / 2;
+    const ly = (y1 + y2) / 2 - 4;
+    const w = e.label.length * (t.dataFontSize * 0.62) + 6;
+    const h = t.dataFontSize + 4;
+    shapes.push({ t: 'rect', x: lx - w / 2, y: ly - h + 3, w, h, rx: 3, cls: 'edge-label-bg' });
+    shapes.push({ t: 'text', x: lx, y: ly, s: e.label, cls: 'edge-label', anchor: 'middle' });
+  }
+}
+
+function arrowHead(px: number, py: number, angle: number): Point[] {
+  const len = 7;
+  const w = 3.2;
+  const ux = Math.cos(angle);
+  const uy = Math.sin(angle);
+  const bx = px - ux * len;
+  const by = py - uy * len;
+  const nx = -uy;
+  const ny = ux;
+  return [
+    [px, py],
+    [bx + nx * w, by + ny * w],
+    [bx - nx * w, by - ny * w],
+  ];
 }
 
 function addGap(shapes: Shape[], x: number, yHi: number, yLo: number): void {

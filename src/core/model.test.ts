@@ -102,4 +102,27 @@ describe('normalize', () => {
     expect(m.rows[0].bricks.length).toBe(MAX_CYCLES);
     expect(m.warnings.some((w) => /truncated/i.test(w.message))).toBe(true);
   });
+
+  it('collects named node anchors with their row and char index', () => {
+    const m = normalize({
+      signal: [
+        { name: 'clk', wave: 'pppp', node: '.a..' },
+        { name: 'd', wave: '0101', node: '..b.' },
+      ],
+      edge: ['a~>b'],
+    });
+    expect(m.nodes.a).toEqual({ row: 0, char: 1 });
+    expect(m.nodes.b).toEqual({ row: 1, char: 2 });
+    expect(m.edges).toEqual(['a~>b']);
+  });
+
+  it('keeps the first definition when a node char repeats', () => {
+    const m = normalize({
+      signal: [
+        { name: 'a', wave: '01', node: 'a.' },
+        { name: 'b', wave: '01', node: 'a.' },
+      ],
+    });
+    expect(m.nodes.a).toEqual({ row: 0, char: 0 });
+  });
 });

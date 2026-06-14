@@ -14,9 +14,12 @@ export type {
   NormModel,
   NormSignal,
   NormGroup,
+  NodeAnchor,
 } from './model';
 export { resolveWave, isBoxKind } from './bricks';
 export type { Brick, BrickKind, WaveWarning } from './bricks';
+export { parseEdge } from './edges';
+export type { ParsedEdge, EdgeStyle } from './edges';
 export { layout } from './layout';
 export type { LayoutResult, Shape, Point } from './layout';
 export { toSvg } from './svg';

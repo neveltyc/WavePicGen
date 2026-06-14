@@ -84,4 +84,37 @@ describe('layout', () => {
     const wide = build({ signal: [{ name: 'a', wave: '0000' }], config: { hscale: 2 } });
     expect(wide.width).toBeGreaterThan(narrow.width);
   });
+
+  it('draws an edge path, arrowhead and label between two nodes', () => {
+    const r = build({
+      signal: [
+        { name: 'a', wave: 'pppp', node: '.a..' },
+        { name: 'b', wave: '0101', node: '...b' },
+      ],
+      edge: ['a~>b tCO'],
+    });
+    expect(count(r.shapes, 'path', 'edge')).toBe(1);
+    expect(count(r.shapes, 'poly', 'edge-arrow')).toBe(1);
+    const label = r.shapes.find((s) => s.t === 'text' && s.cls === 'edge-label') as { s: string } | undefined;
+    expect(label?.s).toBe('tCO');
+  });
+
+  it('skips an edge that references an undefined node', () => {
+    const r = build({
+      signal: [{ name: 'a', wave: 'pppp', node: '.a..' }],
+      edge: ['a~>zzz'],
+    });
+    expect(count(r.shapes, 'path', 'edge')).toBe(0);
+  });
+
+  it('emits two arrowheads for a bidirectional edge', () => {
+    const r = build({
+      signal: [
+        { name: 'a', wave: '0123', node: 'a...' },
+        { name: 'b', wave: '0123', node: '...b' },
+      ],
+      edge: ['a<->b'],
+    });
+    expect(count(r.shapes, 'poly', 'edge-arrow')).toBe(2);
+  });
 });
