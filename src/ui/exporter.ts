@@ -56,6 +56,45 @@ export function rasterize(
   });
 }
 
+/**
+ * Vector PDF via the browser's own print engine on the self-contained SVG.
+ * This gives faithful styling and correct fonts (including CJK) without a
+ * fragile SVG->PDF library; the user picks "Save as PDF" in the print dialog.
+ */
+export function exportPdf(svg: string, width: number, height: number): void {
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  Object.assign(iframe.style, {
+    position: 'fixed',
+    right: '0',
+    bottom: '0',
+    width: '0',
+    height: '0',
+    border: '0',
+  });
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow?.document;
+  if (!doc) {
+    iframe.remove();
+    throw new Error('Could not open a print context for PDF export');
+  }
+  doc.open();
+  doc.write(
+    `<!doctype html><html><head><meta charset="utf-8">` +
+      `<style>@page{size:${width}px ${height}px;margin:0;}html,body{margin:0;padding:0;}svg{display:block;}</style>` +
+      `</head><body>${svg}</body></html>`,
+  );
+  doc.close();
+  const win = iframe.contentWindow;
+  const run = (): void => {
+    win?.focus();
+    win?.print();
+    setTimeout(() => iframe.remove(), 1000);
+  };
+  if (doc.readyState === 'complete') setTimeout(run, 50);
+  else iframe.onload = run;
+}
+
 /** High-level export entry used by the toolbar and the `export` command. */
 export async function exportDiagram(
   svg: string,
@@ -66,6 +105,10 @@ export async function exportDiagram(
 ): Promise<void> {
   if (format === 'svg') {
     downloadSvg(svg);
+    return;
+  }
+  if (format === 'pdf') {
+    exportPdf(svg, width, height);
     return;
   }
   const blob = await rasterize(svg, width, height, format, scale);

@@ -43,7 +43,7 @@ const HELP_HTML = `
     <tr><td>add bus</td><td><code>add bus DATA cycles=3</code></td></tr>
     <tr><td>set</td><td><code>set hscale=2</code> · <code>set head="My Figure"</code></td></tr>
     <tr><td>example</td><td><code>example bus</code> (${examples.map((e) => e.id).join(', ')})</td></tr>
-    <tr><td>export</td><td><code>export png scale=3</code> · <code>export svg</code></td></tr>
+    <tr><td>export</td><td><code>export png scale=3</code> · <code>export svg</code> · <code>export pdf</code></td></tr>
     <tr><td>clear</td><td>Remove all signals.</td></tr>
   </table>
   <h3>Document fields</h3>
@@ -69,6 +69,7 @@ function template(): string {
             <button data-exp="svg" title="Download SVG (vector)">SVG</button>
             <button data-exp="png" title="Download PNG">PNG</button>
             <button data-exp="jpeg" title="Download JPEG">JPEG</button>
+            <button data-exp="pdf" title="Print to PDF (vector)">PDF</button>
           </div>
           <select id="scale" title="Raster scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select>
         </div>
@@ -270,7 +271,8 @@ export class App {
     const scale = scaleOverride ?? (Number(this.scaleSel.value) || 2);
     try {
       await exportDiagram(this.last.svg, this.last.width, this.last.height, format, scale);
-      this.setStatus(`Exported ${format.toUpperCase()}${format === 'svg' ? '' : ` @${scale}×`}.`, 'ok');
+      if (format === 'pdf') this.setStatus('Opened print dialog — choose “Save as PDF”.', 'ok');
+      else this.setStatus(`Exported ${format.toUpperCase()}${format === 'svg' ? '' : ` @${scale}×`}.`, 'ok');
     } catch (e) {
       this.setStatus(`Export failed: ${e instanceof Error ? e.message : String(e)}`, 'error');
     }

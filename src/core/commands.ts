@@ -10,7 +10,7 @@ import type { Lane, SignalSpec, WaveDoc } from './model';
 import { examples } from './examples';
 import { clampInt } from './util';
 
-export type ExportFormat = 'svg' | 'png' | 'jpeg';
+export type ExportFormat = 'svg' | 'png' | 'jpeg' | 'pdf';
 
 export interface CommandResult {
   /** Updated source (present when the command changed the document). */
@@ -95,8 +95,8 @@ export function applyCommand(source: string, line: string): CommandResult {
 
   if (cmd === 'export') {
     const fmt = (tokens[0] ?? 'svg').toLowerCase();
-    if (fmt !== 'svg' && fmt !== 'png' && fmt !== 'jpeg') {
-      return { error: `Unknown export format '${fmt}'. Use svg, png or jpeg.` };
+    if (fmt !== 'svg' && fmt !== 'png' && fmt !== 'jpeg' && fmt !== 'pdf') {
+      return { error: `Unknown export format '${fmt}'. Use svg, png, jpeg or pdf.` };
     }
     const { named } = parseArgs(tokens.slice(1));
     const scale = named.scale ? Number(named.scale) : undefined;
