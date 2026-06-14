@@ -72,6 +72,20 @@ npm run check      # typecheck + test + build 一条龙
 
 **快捷键**：`Ctrl/⌘ + S` 导出 SVG；编辑器内 `Tab` 缩进；`Esc` 关闭帮助。
 
+## 🖥️ 命令行 (CLI)
+
+同一引擎也提供无头命令行，便于批量出图 / CI / 文档构建：
+
+```bash
+npm run cli -- fig.json5                 # SVG 输出到 stdout
+npm run cli -- fig.json5 -o fig.png -s 3 # PNG（3× 缩放，经 resvg）
+cat fig.json5 | npm run cli -- - -o fig.svg
+
+# 或构建独立二进制后直接调用：
+npm run build:cli
+node dist/cli/wavepicgen.mjs fig.json5 -o fig.png
+```
+
 ## 🧱 架构（高内聚 · 低耦合）
 
 严格分层、依赖单向；**核心引擎是纯函数（无 DOM / 无 IO），可独立测试与复用**，GUI 只是它的薄外壳。

@@ -14,12 +14,18 @@
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
     "snapshot": "tsx scripts/snapshot.ts",
+    "cli": "tsx src/cli.ts",
+    "build:cli": "esbuild src/cli.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/cli/wavepicgen.mjs --banner:js=\"#!/usr/bin/env node\"",
     "check": "npm run typecheck && npm test && npm run build"
+  },
+  "bin": {
+    "wavepicgen": "dist/cli/wavepicgen.mjs"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
     "@types/node": "^25.9.3",
     "@vitest/coverage-v8": "^4.1.8",
+    "esbuild": "^0.28.1",
     "happy-dom": "^20.10.3",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
