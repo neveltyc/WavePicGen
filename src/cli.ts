@@ -9,7 +9,7 @@
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { basename } from 'node:path';
-import { render } from './core/index';
+import { render, renderTikz } from './core/index';
 import { parseArgs, formatFor, USAGE } from './cli-args';
 
 async function main(): Promise<number> {
@@ -26,14 +26,29 @@ async function main(): Promise<number> {
   const source =
     opts.input === '-' ? readFileSync(0, 'utf8') : readFileSync(opts.input, 'utf8');
 
+  const format = formatFor(opts);
+
+  if (format === 'tikz') {
+    const { tikz, error } = renderTikz(source);
+    if (error) {
+      process.stderr.write(`error: ${error}\n`);
+      return 1;
+    }
+    if (opts.out) {
+      writeFileSync(opts.out, tikz!, 'utf8');
+      process.stderr.write(`wrote ${opts.out} (tikz-timing)\n`);
+    } else {
+      process.stdout.write(tikz! + '\n');
+    }
+    return 0;
+  }
+
   const result = render(source);
   if (result.error) {
     process.stderr.write(`error: ${result.error}\n`);
     return 1;
   }
   for (const w of result.warnings) process.stderr.write(`warning: ${w}\n`);
-
-  const format = formatFor(opts);
 
   if (format === 'svg') {
     if (opts.out) {

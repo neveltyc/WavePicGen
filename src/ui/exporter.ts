@@ -20,6 +20,10 @@ export function downloadSvg(svg: string, filename = 'wave.svg'): void {
   triggerDownload(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }), filename);
 }
 
+export function downloadText(text: string, filename: string, mime = 'text/plain'): void {
+  triggerDownload(new Blob([text], { type: `${mime};charset=utf-8` }), filename);
+}
+
 /** Rasterize an SVG string to a PNG/JPEG Blob at an integer device scale. */
 export function rasterize(
   svg: string,
@@ -115,6 +119,7 @@ export async function exportDiagram(
     exportPdf(svg, width, height);
     return;
   }
+  if (format === 'tikz') return; // tikz is generated from source by the caller
   const blob = await rasterize(svg, width, height, format, scale);
   triggerDownload(blob, `wave.${format === 'jpeg' ? 'jpg' : 'png'}`);
 }

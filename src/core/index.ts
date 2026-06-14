@@ -24,6 +24,7 @@ export { layout, hitTest } from './layout';
 export type { LayoutResult, Shape, Point, HitMap } from './layout';
 export { cycleBrick, dragPaint, CLICK_STATES } from './edit';
 export { toSvg } from './svg';
+export { toTikz, renderTikz } from './tikz';
 export { defaultTheme } from './theme';
 export type { Theme } from './theme';
 export { applyCommand, commandHelp } from './commands';

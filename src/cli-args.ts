@@ -1,10 +1,12 @@
 /** Pure CLI argument parsing — kept separate from cli.ts so it is unit-testable
  *  without triggering the CLI's top-level execution. */
 
+export type CliFormat = 'svg' | 'png' | 'tikz';
+
 export interface CliOptions {
   input?: string;
   out?: string;
-  format?: 'svg' | 'png';
+  format?: CliFormat;
   scale: number;
   help: boolean;
 }
@@ -18,7 +20,7 @@ Usage:
 
 Options:
   -o, --out <file>     output file (extension picks the format)
-  -f, --format <fmt>   svg | png (default: from -o extension, else svg)
+  -f, --format <fmt>   svg | png | tikz (default: from -o extension, else svg)
   -s, --scale <n>      raster scale for png (default: 2)
   -h, --help           show this help
 `;
@@ -35,8 +37,8 @@ export function parseArgs(argv: string[]): CliOptions {
       opts.out = v;
     } else if (a === '-f' || a === '--format') {
       const f = argv[++i];
-      if (f === 'svg' || f === 'png') opts.format = f;
-      else throw new Error(`unknown format "${f}" (use svg or png)`);
+      if (f === 'svg' || f === 'png' || f === 'tikz') opts.format = f;
+      else throw new Error(`unknown format "${f}" (use svg, png or tikz)`);
     } else if (a === '-s' || a === '--scale') {
       const n = Number(argv[++i]);
       if (!Number.isFinite(n) || n <= 0) throw new Error('--scale must be a positive number');
@@ -53,8 +55,9 @@ export function parseArgs(argv: string[]): CliOptions {
 }
 
 /** Resolve the output format from explicit flag, output extension, or default. */
-export function formatFor(opts: CliOptions): 'svg' | 'png' {
+export function formatFor(opts: CliOptions): CliFormat {
   if (opts.format) return opts.format;
   if (opts.out && /\.png$/i.test(opts.out)) return 'png';
+  if (opts.out && /\.tex$/i.test(opts.out)) return 'tikz';
   return 'svg';
 }

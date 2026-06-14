@@ -5,6 +5,7 @@
  */
 import {
   render,
+  renderTikz,
   applyCommand,
   parseSource,
   serializeDoc,
@@ -16,7 +17,7 @@ import {
   type RenderResult,
   type ExportFormat,
 } from '../core';
-import { exportDiagram } from './exporter';
+import { exportDiagram, downloadText } from './exporter';
 import { Editor } from './editor';
 
 const STORAGE_KEY = 'wavepicgen.source';
@@ -47,7 +48,7 @@ const HELP_HTML = `
     <tr><td>add bus</td><td><code>add bus DATA cycles=3</code></td></tr>
     <tr><td>set</td><td><code>set hscale=2</code> · <code>set head="My Figure"</code></td></tr>
     <tr><td>example</td><td><code>example bus</code> (${examples.map((e) => e.id).join(', ')})</td></tr>
-    <tr><td>export</td><td><code>export png scale=3</code> · <code>export svg</code> · <code>export pdf</code></td></tr>
+    <tr><td>export</td><td><code>export png scale=3</code> · <code>export svg</code> · <code>export pdf</code> · <code>export tikz</code></td></tr>
     <tr><td>clear</td><td>Remove all signals.</td></tr>
   </table>
   <h3>Document fields</h3>
@@ -74,6 +75,7 @@ function template(): string {
             <button data-exp="png" title="Download PNG">PNG</button>
             <button data-exp="jpeg" title="Download JPEG">JPEG</button>
             <button data-exp="pdf" title="Print to PDF (vector)">PDF</button>
+            <button data-exp="tikz" title="Download tikz-timing (.tex)">TikZ</button>
           </div>
           <select id="scale" title="Raster scale"><option value="1">1×</option><option value="2" selected>2×</option><option value="3">3×</option><option value="4">4×</option></select>
         </div>
@@ -273,6 +275,16 @@ export class App {
   }
 
   private async export(format: ExportFormat, scaleOverride?: number): Promise<void> {
+    if (format === 'tikz') {
+      const { tikz, error } = renderTikz(this.editor.getValue());
+      if (error || !tikz) {
+        this.setStatus(`Cannot export TikZ: ${error ?? 'no output'}`, 'error');
+        return;
+      }
+      downloadText(tikz, 'wave.tex', 'text/x-tex');
+      this.setStatus('Exported tikz-timing (.tex).', 'ok');
+      return;
+    }
     this.renderNow(); // export exactly what's in the editor, even mid-debounce
     if (!this.last || this.last.error) {
       this.setStatus('Nothing to export — fix the source first.', 'error');
