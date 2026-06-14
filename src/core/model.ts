@@ -7,6 +7,7 @@
  */
 import { resolveWave } from './bricks';
 import type { Brick, WaveWarning } from './bricks';
+import { MAX_CYCLES } from './util';
 
 export interface SignalSpec {
   name?: string;
@@ -101,14 +102,34 @@ export function normalize(doc: WaveDoc): NormModel {
           groups.push({ label, firstRow, lastRow, depth });
         }
       } else {
+        // Runtime guard: malformed JSON can put primitives/null in `signal`.
+        const raw = item as unknown;
+        if (raw === null || typeof raw !== 'object') {
+          warnings.push({ message: `Ignored non-object signal entry: ${JSON.stringify(raw)}.` });
+          continue;
+        }
+        const name = item.name ?? '';
         const isSpacer = item.wave == null || item.wave === '';
+        let waveStr = isSpacer ? '' : String(item.wave);
+        if (waveStr.length > MAX_CYCLES) {
+          warnings.push({ message: `Wave for "${name}" truncated to ${MAX_CYCLES} cycles.` });
+          waveStr = waveStr.slice(0, MAX_CYCLES);
+        }
+        const period =
+          typeof item.period === 'number' && Number.isFinite(item.period) && item.period > 0
+            ? Math.min(Math.floor(item.period), 256)
+            : 1;
+        let phase = typeof item.phase === 'number' && Number.isFinite(item.phase) ? item.phase : 0;
+        if (phase < 0) {
+          warnings.push({ message: `Negative phase on "${name}" clamped to 0.` });
+          phase = 0;
+        }
+        phase = Math.min(phase, MAX_CYCLES);
         rows.push({
-          name: item.name ?? '',
-          bricks: isSpacer
-            ? []
-            : resolveWave(item.wave as string, toDataArray(item.data), warnings),
-          period: item.period && item.period > 0 ? item.period : 1,
-          phase: item.phase ?? 0,
+          name,
+          bricks: isSpacer ? [] : resolveWave(waveStr, toDataArray(item.data), warnings),
+          period,
+          phase,
           depth,
           isSpacer,
         });
@@ -118,15 +139,19 @@ export function normalize(doc: WaveDoc): NormModel {
 
   walk(doc.signal ?? [], 0);
 
+  const rawHscale = doc.config?.hscale;
   const hscale =
-    doc.config?.hscale && doc.config.hscale > 0 ? doc.config.hscale : 1;
+    typeof rawHscale === 'number' && Number.isFinite(rawHscale) && rawHscale > 0
+      ? Math.min(rawHscale, 100)
+      : 1;
 
   let cycles = 0;
   for (const r of rows) {
-    cycles = Math.max(
-      cycles,
-      Math.ceil(r.bricks.length * r.period + Math.max(0, r.phase)),
-    );
+    cycles = Math.max(cycles, Math.ceil(r.bricks.length * r.period + r.phase));
+  }
+  if (cycles > MAX_CYCLES) {
+    warnings.push({ message: `Diagram clamped to ${MAX_CYCLES} cycles.` });
+    cycles = MAX_CYCLES;
   }
 
   return {

@@ -44,6 +44,12 @@ describe('applyCommand', () => {
     expect(applyCommand(EMPTY, 'add clock').error).toBeDefined();
   });
 
+  it('falls back to the default cycle count for a non-numeric cycles=', () => {
+    const r = applyCommand(EMPTY, 'add clock CLK cycles=abc');
+    const sig = signalsOf(r.source!)[0] as { wave: string };
+    expect(sig.wave).toBe('pppp'); // default 4, not '' from NaN
+  });
+
   it('sets hscale and head text', () => {
     const r1 = applyCommand(EMPTY, 'set hscale=2');
     expect(parseSource(r1.source!).doc?.config?.hscale).toBe(2);

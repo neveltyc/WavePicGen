@@ -9,6 +9,7 @@ import { layout } from './layout';
 import { toSvg } from './svg';
 import { defaultTheme } from './theme';
 import type { Theme } from './theme';
+import { escapeXml } from './util';
 
 export interface RenderResult {
   svg: string;
@@ -23,10 +24,7 @@ export interface RenderResult {
 function errorCard(message: string): { svg: string; width: number; height: number } {
   const width = 460;
   const height = 96;
-  const safe = message
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
+  const safe = escapeXml(message);
   // Generic (quote-free) font names keep the standalone SVG markup valid.
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">` +

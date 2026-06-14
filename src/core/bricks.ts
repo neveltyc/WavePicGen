@@ -90,6 +90,12 @@ export function resolveWave(
     prev = kind;
   }
 
+  if (warnings && data.length > 0 && dataIndex > data.length) {
+    warnings.push({
+      message: `${dataIndex - data.length} bus value(s) have no data label (expected ${dataIndex}, got ${data.length}).`,
+    });
+  }
+
   return bricks;
 }
 

@@ -8,6 +8,7 @@
 import { parseSource, serializeDoc } from './parse';
 import type { Lane, SignalSpec, WaveDoc } from './model';
 import { examples } from './examples';
+import { clampInt } from './util';
 
 export type ExportFormat = 'svg' | 'png' | 'jpeg';
 
@@ -132,7 +133,7 @@ export function applyCommand(source: string, line: string): CommandResult {
     const { positional, named } = parseArgs(tokens);
     const name = positional[0];
     if (!name) return { error: `Missing name. e.g. "add ${kind || 'signal'} CLK"` };
-    const cycles = named.cycles ? Math.max(1, Number(named.cycles)) : 4;
+    const cycles = clampInt(named.cycles, 1, 256, 4);
 
     let sig: SignalSpec;
     if (kind === 'clock') {

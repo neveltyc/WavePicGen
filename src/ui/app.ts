@@ -149,6 +149,7 @@ export class App {
     this.query();
     this.restoreTheme();
     this.editor.value = localStorage.getItem(STORAGE_KEY) ?? defaultSource;
+    this.updateGutter();
     this.wire();
     this.renderNow();
   }
@@ -249,7 +250,6 @@ export class App {
     this.last = result;
     this.preview.innerHTML = result.svg;
     this.applyZoom();
-    this.updateGutter();
 
     if (result.error) {
       this.setStatus(result.error, 'error');
@@ -286,6 +286,7 @@ export class App {
   }
 
   private async export(format: ExportFormat, scaleOverride?: number): Promise<void> {
+    this.renderNow(); // export exactly what's in the editor, even mid-debounce
     if (!this.last || this.last.error) {
       this.setStatus('Nothing to export — fix the source first.', 'error');
       return;
@@ -305,7 +306,7 @@ export class App {
     else if (action === 'reset') this.zoom = 1;
     else if (action === 'fit' && this.last) {
       const avail = this.previewScroll.clientWidth - 48;
-      this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, avail / this.last.width));
+      if (avail > 0) this.zoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, avail / this.last.width));
     }
     this.applyZoom();
   }
@@ -321,9 +322,7 @@ export class App {
 
   private updateGutter(): void {
     const lines = this.editor.value.split('\n').length;
-    let s = '';
-    for (let i = 1; i <= lines; i++) s += i + (i < lines ? '\n' : '');
-    this.gutter.textContent = s;
+    this.gutter.textContent = Array.from({ length: lines }, (_, i) => String(i + 1)).join('\n');
     this.gutter.scrollTop = this.editor.scrollTop;
   }
 

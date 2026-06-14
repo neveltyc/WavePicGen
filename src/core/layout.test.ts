@@ -69,6 +69,16 @@ describe('layout', () => {
     expect(count(r.shapes, 'line', 'gap')).toBe(2);
   });
 
+  it('honours a gap on the leading brick (regression)', () => {
+    const r = build({ signal: [{ name: 'a', wave: '|0' }] });
+    expect(count(r.shapes, 'rect', 'gapbg')).toBe(1);
+  });
+
+  it('draws the weak-pull dot once per transition, not per held cycle', () => {
+    const r = build({ signal: [{ name: 'a', wave: 'u...' }] });
+    expect(count(r.shapes, 'rect', 'weak')).toBe(1);
+  });
+
   it('scales wave width with hscale', () => {
     const narrow = build({ signal: [{ name: 'a', wave: '0000' }] });
     const wide = build({ signal: [{ name: 'a', wave: '0000' }], config: { hscale: 2 } });

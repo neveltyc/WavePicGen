@@ -61,6 +61,18 @@ describe('resolveWave', () => {
     const b = resolveWave('.');
     expect(b[0].kind.type).toBe('empty');
   });
+
+  it('warns when data labels are fewer than data bricks', () => {
+    const warnings: WaveWarning[] = [];
+    resolveWave('=.=.=.', ['only'], warnings);
+    expect(warnings.some((w) => /data label/i.test(w.message))).toBe(true);
+  });
+
+  it('does not warn when no data array is supplied at all', () => {
+    const warnings: WaveWarning[] = [];
+    resolveWave('234', [], warnings);
+    expect(warnings).toHaveLength(0);
+  });
 });
 
 describe('isBoxKind', () => {

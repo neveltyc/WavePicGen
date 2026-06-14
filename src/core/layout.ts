@@ -6,10 +6,12 @@
  * Keeping the output as plain data (not SVG strings) means it is trivially
  * unit-testable and the SVG serializer (svg.ts) stays a dumb, separate step.
  */
+import { isBoxKind } from './bricks';
 import type { Brick } from './bricks';
 import type { NormModel, NormSignal } from './model';
 import { defaultTheme } from './theme';
 import type { Theme } from './theme';
+import { nf } from './util';
 
 export type Point = [number, number];
 
@@ -125,6 +127,7 @@ export function layout(model: NormModel, theme: Theme = defaultTheme): LayoutRes
 /** Draw one signal's wave across the cycles. */
 function renderLane(r: NormSignal, shapes: Shape[], x0: number, yHi: number, yLo: number, bw: number, t: Theme): void {
   const yMid = (yHi + yLo) / 2;
+  const slew = Math.min(t.slew, bw / 2);
   const bricks = r.bricks;
   const n = bricks.length;
 
@@ -141,10 +144,10 @@ function renderLane(r: NormSignal, shapes: Shape[], x0: number, yHi: number, yLo
     const k = b.kind;
     const xS = x0 + i * bw;
     const xE = xS + bw;
-    const slew = Math.min(t.slew, bw / 2);
 
     if (k.type === 'empty') {
       flush();
+      if (b.gap) addGap(shapes, xS, yHi, yLo);
       prevY = null;
       i++;
       continue;
@@ -176,8 +179,8 @@ function renderLane(r: NormSignal, shapes: Shape[], x0: number, yHi: number, yLo
       }
       pts.push([xE, yl]);
       prevY = yl;
-      if (k.level === 'u' || k.level === 'd') {
-        // weak: a faint dot at the start to hint pull strength
+      if (!b.cont && (k.level === 'u' || k.level === 'd')) {
+        // weak: a faint dot at the transition to hint pull strength
         shapes.push({ t: 'rect', x: xS - 1, y: yl - 1, w: 2, h: 2, cls: 'weak' });
       }
       if (b.gap) addGap(shapes, xS, yHi, yLo);
@@ -193,7 +196,7 @@ function renderLane(r: NormSignal, shapes: Shape[], x0: number, yHi: number, yLo
     let j = i + 1;
     while (j < n) {
       const bj = bricks[j] as Brick;
-      if (bj.cont && (bj.kind.type === 'data' || (bj.kind.type === 'level' && bj.kind.level === 'x'))) j++;
+      if (bj.cont && isBoxKind(bj.kind)) j++;
       else break;
     }
     const rx0 = x0 + i * bw;
@@ -253,8 +256,4 @@ function addGap(shapes: Shape[], x: number, yHi: number, yLo: number): void {
   shapes.push({ t: 'rect', x: x - w / 2, y: yHi - 3, w, h: yLo - yHi + 6, cls: 'gapbg' });
   shapes.push({ t: 'line', x1: x - 4, y1: yLo + 3, x2: x, y2: yHi - 3, cls: 'gap' });
   shapes.push({ t: 'line', x1: x, y1: yLo + 3, x2: x + 4, y2: yHi - 3, cls: 'gap' });
-}
-
-function nf(x: number): string {
-  return Number.isInteger(x) ? String(x) : x.toFixed(2);
 }

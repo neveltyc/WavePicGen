@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { normalize } from './model';
+import { MAX_CYCLES } from './util';
 import type { WaveDoc } from './model';
 
 describe('normalize', () => {
@@ -66,5 +67,39 @@ describe('normalize', () => {
     const m = normalize(doc);
     expect(m.hscale).toBe(1);
     expect(m.rows[0].period).toBe(1);
+  });
+
+  it('clamps absurd period/hscale so cycles never explodes (OOM guard)', () => {
+    const m = normalize({ signal: [{ name: 'a', wave: '==', period: 1e9 }] });
+    expect(Number.isFinite(m.cycles)).toBe(true);
+    expect(m.cycles).toBeLessThanOrEqual(MAX_CYCLES);
+    expect(m.rows[0].period).toBeLessThanOrEqual(256);
+    const m2 = normalize({ signal: [{ name: 'a', wave: '01' }], config: { hscale: 1e308 } });
+    expect(m2.hscale).toBe(100);
+  });
+
+  it('caps total cycles at MAX_CYCLES with a warning', () => {
+    const m = normalize({ signal: [{ name: 'a', wave: '0'.repeat(100), period: 256 }] });
+    expect(m.cycles).toBe(MAX_CYCLES); // 100 * 256 = 25600 -> capped
+    expect(m.warnings.some((w) => /clamped/i.test(w.message))).toBe(true);
+  });
+
+  it('clamps negative phase to 0 with a warning', () => {
+    const m = normalize({ signal: [{ name: 'a', wave: '01', phase: -5 }] });
+    expect(m.rows[0].phase).toBe(0);
+    expect(m.warnings.some((w) => /phase/i.test(w.message))).toBe(true);
+  });
+
+  it('ignores non-object signal entries instead of crashing', () => {
+    const m = normalize({ signal: [1, null, 'x', { name: 'ok', wave: '0' }] as never });
+    expect(m.rows.map((r) => r.name)).toEqual(['ok']);
+    expect(m.warnings.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('truncates an oversized wave string', () => {
+    const huge = '0'.repeat(MAX_CYCLES + 500);
+    const m = normalize({ signal: [{ name: 'a', wave: huge }] });
+    expect(m.rows[0].bricks.length).toBe(MAX_CYCLES);
+    expect(m.warnings.some((w) => /truncated/i.test(w.message))).toBe(true);
   });
 });
