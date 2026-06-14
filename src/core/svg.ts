@@ -57,7 +57,10 @@ function styleBlock(t: Theme): string {
     ${s} .edge{fill:none;stroke:${t.edgeColor};stroke-width:1.2;}
     ${s} .edge-arrow{fill:${t.edgeColor};stroke:none;}
     ${s} .edge-label{fill:${t.edgeColor};font-size:${t.dataFontSize}px;}
-    ${s} .edge-label-bg{fill:${t.background};stroke:none;opacity:0.85;}`;
+    ${s} .edge-label-bg{fill:${t.background};stroke:none;opacity:0.85;}
+    ${s} .ruler{fill:none;stroke:${t.tickColor};stroke-width:1;}
+    ${s} .ruler-arrow{fill:${t.tickColor};stroke:none;}
+    ${s} .ruler-label{fill:${t.tickColor};font-size:${t.dataFontSize}px;}`;
 }
 
 function defsBlock(t: Theme): string {

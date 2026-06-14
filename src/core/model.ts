@@ -35,12 +35,21 @@ export interface HeadFoot {
   tick?: number;
 }
 
+/** A typed relation/measurement between two anchors (node name or `signal@time`). */
+export interface Relation {
+  type?: 'arrow' | 'setup' | 'hold' | 'delay' | 'ruler';
+  from: string;
+  to: string;
+  label?: string;
+}
+
 export interface WaveDoc {
   signal: Lane[];
   config?: Config;
   head?: HeadFoot;
   foot?: HeadFoot;
   edge?: string[];
+  relations?: Relation[];
 }
 
 export interface NormSignal {
@@ -72,6 +81,9 @@ export interface NormModel {
   hscale: number;
   nodes: Record<string, NodeAnchor>;
   edges: string[];
+  relations: Relation[];
+  /** Signal name -> row index (first occurrence), for `name@time` anchors. */
+  names: Record<string, number>;
   head?: HeadFoot;
   foot?: HeadFoot;
   warnings: WaveWarning[];
@@ -142,9 +154,11 @@ export function normalize(doc: WaveDoc): NormModel {
   const { flats, groups } = flattenLanes(doc.signal ?? [], warnings);
   const rows: NormSignal[] = [];
   const nodes: Record<string, NodeAnchor> = {};
+  const names: Record<string, number> = {};
 
   flats.forEach(({ spec, depth }, rowIndex) => {
     const name = spec.name ?? '';
+    if (name && !(name in names)) names[name] = rowIndex;
     const isSpacer = spec.wave == null || spec.wave === '';
     let waveStr = isSpacer ? '' : String(spec.wave);
     if (waveStr.length > MAX_CYCLES) {
@@ -206,6 +220,8 @@ export function normalize(doc: WaveDoc): NormModel {
     hscale,
     nodes,
     edges: Array.isArray(doc.edge) ? doc.edge : [],
+    relations: Array.isArray(doc.relations) ? doc.relations : [],
+    names,
     head: doc.head,
     foot: doc.foot,
     warnings,

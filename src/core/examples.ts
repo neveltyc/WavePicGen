@@ -73,6 +73,24 @@ export const examples: Example[] = [
 }`,
   },
   {
+    id: 'relations',
+    title: 'Relations: rulers & @time setup/hold',
+    source: `{
+  signal: [
+    { name: 'clk',   wave: 'P.P.P.P.' },
+    { name: 'data',  wave: 'x.=...x.', data: ['valid'] },
+    { name: 'tmeas', wave: '' },
+  ],
+  // Relations anchor to a node, or to "signalName@time" (time in cycles).
+  relations: [
+    { type: 'ruler', from: 'tmeas@1', to: 'tmeas@3', label: '2 cycles' },
+    { type: 'setup', from: 'data@2', to: 'clk@2', label: 'tSU' },
+    { type: 'delay', from: 'clk@4', to: 'data@4', label: 'tCO' },
+  ],
+  head: { text: 'Rulers & @time relations', tick: 0 },
+}`,
+  },
+  {
     id: 'phase',
     title: 'Period & phase (sub-cycle taste)',
     source: `{

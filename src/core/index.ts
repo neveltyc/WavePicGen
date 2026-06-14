@@ -15,11 +15,12 @@ export type {
   NormSignal,
   NormGroup,
   NodeAnchor,
+  Relation,
 } from './model';
 export { resolveWave, isBoxKind } from './bricks';
 export type { Brick, BrickKind, WaveWarning } from './bricks';
-export { parseEdge } from './edges';
-export type { ParsedEdge, EdgeStyle } from './edges';
+export { parseEdge, parseAnchor } from './edges';
+export type { ParsedEdge, EdgeStyle, ParsedAnchor } from './edges';
 export { layout, hitTest } from './layout';
 export type { LayoutResult, Shape, Point, HitMap } from './layout';
 export { cycleBrick, dragPaint, insertCycles, deleteCycles, CLICK_STATES } from './edit';

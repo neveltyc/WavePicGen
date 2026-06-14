@@ -8,7 +8,7 @@
  */
 import { isBoxKind } from './bricks';
 import type { Brick } from './bricks';
-import { parseEdge } from './edges';
+import { parseEdge, parseAnchor } from './edges';
 import type { ParsedEdge } from './edges';
 import type { NodeAnchor, NormModel, NormSignal } from './model';
 import { defaultTheme } from './theme';
@@ -143,23 +143,42 @@ export function layout(model: NormModel, theme: Theme = defaultTheme): LayoutRes
   }
 
   // ---- edges / relations (drawn on top of the waves) ----
-  if (model.edges.length > 0) {
-    const nodePoint = (a: NodeAnchor): Point => {
-      const row = model.rows[a.row];
-      const char = Math.min(a.char, row.bricks.length);
-      return [
-        x0 + (row.phase + char * row.period) * cw,
-        topY + a.row * rowH + t.waveHeight / 2,
-      ];
-    };
-    for (const spec of model.edges) {
-      const e = parseEdge(spec);
-      if (!e) continue;
-      const a = model.nodes[e.from];
-      const b = model.nodes[e.to];
-      if (!a || !b) continue;
-      if (model.rows[a.row].isSpacer || model.rows[b.row].isSpacer) continue;
-      drawEdge(shapes, nodePoint(a), nodePoint(b), e, t);
+  const nodePoint = (a: NodeAnchor): Point => {
+    const row = model.rows[a.row];
+    const char = Math.min(a.char, row.bricks.length);
+    return [x0 + (row.phase + char * row.period) * cw, topY + a.row * rowH + t.waveHeight / 2];
+  };
+  const rowMidY = (row: number): number => topY + row * rowH + t.waveHeight / 2;
+  const resolveAnchor = (s: string): Point | null => {
+    const pa = parseAnchor(s);
+    if (!pa) return null;
+    if (pa.kind === 'node') {
+      const a = model.nodes[pa.node];
+      if (!a || model.rows[a.row].isSpacer) return null;
+      return nodePoint(a);
+    }
+    const row = model.names[pa.signal];
+    if (row === undefined) return null;
+    return [x0 + pa.time * cw, rowMidY(row)];
+  };
+
+  for (const spec of model.edges) {
+    const e = parseEdge(spec);
+    if (!e) continue;
+    const p1 = resolveAnchor(e.from);
+    const p2 = resolveAnchor(e.to);
+    if (p1 && p2) drawEdge(shapes, p1, p2, e, t);
+  }
+
+  for (const rel of model.relations) {
+    if (!rel || typeof rel.from !== 'string' || typeof rel.to !== 'string') continue;
+    const p1 = resolveAnchor(rel.from);
+    const p2 = resolveAnchor(rel.to);
+    if (!p1 || !p2) continue;
+    if (rel.type === 'ruler') {
+      drawRuler(shapes, p1, p2, rel.label ?? '', t);
+    } else {
+      drawEdge(shapes, p1, p2, { from: '', to: '', style: 'spline', arrowStart: false, arrowEnd: true, label: rel.label ?? '' }, t);
     }
   }
 
@@ -347,12 +366,37 @@ function drawEdge(shapes: Shape[], p1: Point, p2: Point, e: ParsedEdge, t: Theme
   if (e.label) {
     const lx = (x1 + x2) / 2;
     const ly = (y1 + y2) / 2 - 4;
-    // Estimate width per code point; CJK/wide glyphs are ~1em, Latin ~0.6em.
-    let w = 6;
-    for (const ch of e.label) w += (ch.codePointAt(0) ?? 0) > 0x2e7f ? t.dataFontSize : t.dataFontSize * 0.6;
+    const w = labelWidth(e.label, t.dataFontSize);
     const h = t.dataFontSize + 4;
     shapes.push({ t: 'rect', x: lx - w / 2, y: ly - h + 3, w, h, rx: 3, cls: 'edge-label-bg' });
     shapes.push({ t: 'text', x: lx, y: ly, s: e.label, cls: 'edge-label', anchor: 'middle' });
+  }
+}
+
+/** Estimate a label's px width (CJK/wide glyphs ~1em, Latin ~0.6em). */
+function labelWidth(label: string, fontSize: number): number {
+  let w = 6;
+  for (const ch of label) w += (ch.codePointAt(0) ?? 0) > 0x2e7f ? fontSize : fontSize * 0.6;
+  return w;
+}
+
+/** A measurement/dimension line between two points with end caps and a label. */
+function drawRuler(shapes: Shape[], p1: Point, p2: Point, label: string, t: Theme): void {
+  const yLine = (p1[1] + p2[1]) / 2;
+  const lo = Math.min(p1[0], p2[0]);
+  const hi = Math.max(p1[0], p2[0]);
+  const cap = 4;
+  shapes.push({ t: 'line', x1: lo, y1: yLine, x2: hi, y2: yLine, cls: 'ruler' });
+  shapes.push({ t: 'line', x1: lo, y1: yLine - cap, x2: lo, y2: yLine + cap, cls: 'ruler' });
+  shapes.push({ t: 'line', x1: hi, y1: yLine - cap, x2: hi, y2: yLine + cap, cls: 'ruler' });
+  shapes.push({ t: 'poly', pts: arrowHead(lo, yLine, Math.PI), closed: true, cls: 'ruler-arrow' });
+  shapes.push({ t: 'poly', pts: arrowHead(hi, yLine, 0), closed: true, cls: 'ruler-arrow' });
+  if (label) {
+    const lx = (lo + hi) / 2;
+    const ly = yLine - 6;
+    const w = labelWidth(label, t.dataFontSize);
+    shapes.push({ t: 'rect', x: lx - w / 2, y: ly - t.dataFontSize + 2, w, h: t.dataFontSize + 4, rx: 3, cls: 'edge-label-bg' });
+    shapes.push({ t: 'text', x: lx, y: ly, s: label, cls: 'ruler-label', anchor: 'middle' });
   }
 }
 

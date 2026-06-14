@@ -125,6 +125,34 @@ describe('layout', () => {
     });
     expect(count(r.shapes, 'path', 'edge')).toBe(0);
   });
+
+  it('draws a ruler relation with caps and arrowheads', () => {
+    const r = build({
+      signal: [{ name: 'm', wave: '0000' }],
+      relations: [{ type: 'ruler', from: 'm@1', to: 'm@3', label: '2 cyc' }],
+    });
+    expect(count(r.shapes, 'line', 'ruler')).toBe(3); // span + 2 caps
+    expect(count(r.shapes, 'poly', 'ruler-arrow')).toBe(2);
+    const label = r.shapes.find((s) => s.t === 'text' && s.cls === 'ruler-label') as { s: string } | undefined;
+    expect(label?.s).toBe('2 cyc');
+  });
+
+  it('draws a typed @time relation as an arrow', () => {
+    const r = build({
+      signal: [{ name: 'clk', wave: 'pppp' }, { name: 'd', wave: '0101' }],
+      relations: [{ type: 'setup', from: 'd@2', to: 'clk@2', label: 'tSU' }],
+    });
+    expect(count(r.shapes, 'path', 'edge')).toBe(1);
+    expect(count(r.shapes, 'poly', 'edge-arrow')).toBe(1);
+  });
+
+  it('skips relations referencing an unknown signal name', () => {
+    const r = build({
+      signal: [{ name: 'clk', wave: 'pppp' }],
+      relations: [{ type: 'arrow', from: 'nope@1', to: 'clk@2' }],
+    });
+    expect(count(r.shapes, 'path', 'edge')).toBe(0);
+  });
 });
 
 describe('hitTest', () => {

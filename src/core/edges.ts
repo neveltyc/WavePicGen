@@ -22,6 +22,24 @@ export interface ParsedEdge {
   label: string;
 }
 
+/** A relation anchor: a node character, or `signalName@time` (time in cycles). */
+export type ParsedAnchor =
+  | { kind: 'node'; node: string }
+  | { kind: 'time'; signal: string; time: number };
+
+export function parseAnchor(spec: string): ParsedAnchor | null {
+  const at = spec.indexOf('@');
+  if (at >= 0) {
+    const signal = spec.slice(0, at).trim();
+    const timeStr = spec.slice(at + 1).trim();
+    const time = Number(timeStr);
+    if (!signal || timeStr === '' || !Number.isFinite(time) || time < 0) return null;
+    return { kind: 'time', signal, time };
+  }
+  const node = spec.trim();
+  return node ? { kind: 'node', node } : null;
+}
+
 /** Parse one edge string; returns null when it has no valid connection. */
 export function parseEdge(spec: string): ParsedEdge | null {
   const trimmed = spec.trim();

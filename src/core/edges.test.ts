@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEdge } from './edges';
+import { parseEdge, parseAnchor } from './edges';
 
 describe('parseEdge', () => {
   it('parses a straight edge with an end arrow and label', () => {
@@ -38,5 +38,23 @@ describe('parseEdge', () => {
     expect(parseEdge('')).toBeNull();
     expect(parseEdge('   ')).toBeNull();
     expect(parseEdge('a')).toBeNull();
+  });
+});
+
+describe('parseAnchor', () => {
+  it('parses a bare node name', () => {
+    expect(parseAnchor('a')).toEqual({ kind: 'node', node: 'a' });
+  });
+
+  it('parses signal@time including fractional time', () => {
+    expect(parseAnchor('CLK@2')).toEqual({ kind: 'time', signal: 'CLK', time: 2 });
+    expect(parseAnchor('data@2.75')).toEqual({ kind: 'time', signal: 'data', time: 2.75 });
+  });
+
+  it('rejects malformed time anchors', () => {
+    expect(parseAnchor('CLK@')).toBeNull();
+    expect(parseAnchor('@2')).toBeNull();
+    expect(parseAnchor('CLK@-1')).toBeNull();
+    expect(parseAnchor('CLK@abc')).toBeNull();
   });
 });
