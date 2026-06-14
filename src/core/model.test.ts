@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalize } from './model';
+import { normalize, signalSpecAt } from './model';
 import { MAX_CYCLES } from './util';
 import type { WaveDoc } from './model';
 
@@ -124,5 +124,29 @@ describe('normalize', () => {
       ],
     });
     expect(m.nodes.a).toEqual({ row: 0, char: 0 });
+  });
+
+  it('records node anchors as brick columns when the wave has spaces', () => {
+    // wave "0 1 0" collapses to 3 bricks; node "a" aligns to the "1" -> column 1
+    const m = normalize({ signal: [{ name: 'a', wave: '0 1 0', node: '. a .' }] });
+    expect(m.nodes.a).toEqual({ row: 0, char: 1 });
+  });
+});
+
+describe('signalSpecAt', () => {
+  const lanes = [
+    { name: 'clk', wave: '0' },
+    ['g', { name: 'x', wave: '0' }, ['h', { name: 'y', wave: '0' }]],
+  ] as WaveDoc['signal'];
+
+  it('resolves row indices in the same order normalize produces rows', () => {
+    const m = normalize({ signal: lanes });
+    m.rows.forEach((r, i) => {
+      expect(signalSpecAt(lanes, i)?.name).toBe(r.name);
+    });
+  });
+
+  it('returns null for out-of-range rows', () => {
+    expect(signalSpecAt(lanes, 99)).toBeNull();
   });
 });

@@ -78,21 +78,25 @@ export function exportPdf(svg: string, width: number, height: number): void {
     iframe.remove();
     throw new Error('Could not open a print context for PDF export');
   }
+  // @page size in inches (CSS px / 96) so the PDF page matches the diagram
+  // instead of snapping to Letter/A4.
+  const wIn = (width / 96).toFixed(3);
+  const hIn = (height / 96).toFixed(3);
   doc.open();
   doc.write(
     `<!doctype html><html><head><meta charset="utf-8">` +
-      `<style>@page{size:${width}px ${height}px;margin:0;}html,body{margin:0;padding:0;}svg{display:block;}</style>` +
+      `<style>@page{size:${wIn}in ${hIn}in;margin:0;}html,body{margin:0;padding:0;}svg{display:block;}</style>` +
       `</head><body>${svg}</body></html>`,
   );
   doc.close();
   const win = iframe.contentWindow;
-  const run = (): void => {
+  // A document written via document.write may never fire 'load', so trigger
+  // print on a short timer rather than relying on the load event.
+  setTimeout(() => {
     win?.focus();
     win?.print();
     setTimeout(() => iframe.remove(), 1000);
-  };
-  if (doc.readyState === 'complete') setTimeout(run, 50);
-  else iframe.onload = run;
+  }, 100);
 }
 
 /** High-level export entry used by the toolbar and the `export` command. */

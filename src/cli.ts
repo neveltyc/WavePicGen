@@ -19,6 +19,10 @@ async function main(): Promise<number> {
     return opts.help ? 0 : 1;
   }
 
+  if (opts.input === '-' && process.stdin.isTTY) {
+    process.stderr.write('error: no input on stdin (pipe a file or pass a path)\n');
+    return 1;
+  }
   const source =
     opts.input === '-' ? readFileSync(0, 'utf8') : readFileSync(opts.input, 'utf8');
 
@@ -48,7 +52,9 @@ async function main(): Promise<number> {
     background: 'white',
   });
   const png = resvg.render().asPng();
-  const out = opts.out ?? `${basename(opts.input).replace(/\.[^.]+$/, '')}.png`;
+  const out =
+    opts.out ??
+    (opts.input === '-' ? 'wave.png' : `${basename(opts.input).replace(/\.[^.]+$/, '')}.png`);
   writeFileSync(out, png);
   process.stderr.write(
     `wrote ${out} (${result.width * opts.scale}x${result.height * opts.scale})\n`,

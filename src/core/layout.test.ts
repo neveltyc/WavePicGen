@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { normalize } from './model';
-import { layout } from './layout';
+import { layout, hitTest } from './layout';
 import type { Shape } from './layout';
 import type { WaveDoc } from './model';
 
@@ -116,5 +116,43 @@ describe('layout', () => {
       edge: ['a<->b'],
     });
     expect(count(r.shapes, 'poly', 'edge-arrow')).toBe(2);
+  });
+
+  it('skips edges anchored on a spacer row', () => {
+    const r = build({
+      signal: [{ name: 'sp', node: 'a' }, { name: 'b', wave: '01', node: '.b' }],
+      edge: ['a->b'],
+    });
+    expect(count(r.shapes, 'path', 'edge')).toBe(0);
+  });
+});
+
+describe('hitTest', () => {
+  it('is the exact inverse of brick placement (incl. period/phase)', () => {
+    const r = build({
+      signal: [{ name: 'a', wave: 'pppp' }, {}, { name: 'b', wave: '00', period: 2, phase: 1 }],
+    });
+    const hm = r.hitMap;
+    for (const [row, brick] of [[0, 0], [0, 3], [2, 0], [2, 1]] as const) {
+      const rr = hm.rows[row];
+      const x = hm.x0 + (rr.phase + (brick + 0.5) * rr.period) * hm.cw;
+      const y = hm.topY + row * hm.rowH + hm.waveHeight / 2;
+      expect(hitTest(hm, x, y)).toEqual({ row, brick });
+    }
+  });
+
+  it('returns null in the gap between lanes and outside the diagram', () => {
+    const r = build({ signal: [{ name: 'a', wave: '01' }, { name: 'b', wave: '01' }] });
+    const hm = r.hitMap;
+    const gapY = hm.topY + hm.waveHeight + (hm.rowH - hm.waveHeight) / 2; // laneGap
+    expect(hitTest(hm, hm.x0 + hm.cw / 2, gapY)).toBeNull();
+    expect(hitTest(hm, -50, hm.topY)).toBeNull();
+    expect(hitTest(hm, hm.x0 + 1e6, hm.topY + 1)).toBeNull();
+  });
+
+  it('returns null on spacer rows', () => {
+    const r = build({ signal: [{}, { name: 'b', wave: '01' }] });
+    const hm = r.hitMap;
+    expect(hitTest(hm, hm.x0 + hm.cw / 2, hm.topY + hm.waveHeight / 2)).toBeNull();
   });
 });

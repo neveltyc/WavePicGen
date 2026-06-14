@@ -30,7 +30,9 @@ export function parseArgs(argv: string[]): CliOptions {
     if (a === '-h' || a === '--help') {
       opts.help = true;
     } else if (a === '-o' || a === '--out') {
-      opts.out = argv[++i];
+      const v = argv[++i];
+      if (v === undefined) throw new Error('missing value for -o/--out');
+      opts.out = v;
     } else if (a === '-f' || a === '--format') {
       const f = argv[++i];
       if (f === 'svg' || f === 'png') opts.format = f;

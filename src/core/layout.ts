@@ -42,6 +42,19 @@ export interface LayoutResult {
   hitMap: HitMap;
 }
 
+/** Map a point in the rendered SVG (user coordinates) back to a (row, brick). */
+export function hitTest(hm: HitMap, x: number, y: number): { row: number; brick: number } | null {
+  const row = Math.floor((y - hm.topY) / hm.rowH);
+  if (row < 0 || row >= hm.rows.length) return null;
+  const rowTop = hm.topY + row * hm.rowH;
+  if (y < rowTop || y > rowTop + hm.waveHeight) return null;
+  const r = hm.rows[row];
+  if (r.isSpacer || r.bricks === 0) return null;
+  const brick = Math.floor((x - hm.x0 - r.phase * hm.cw) / (hm.cw * r.period));
+  if (brick < 0 || brick >= r.bricks) return null;
+  return { row, brick };
+}
+
 function levelY(level: string, yHi: number, yLo: number, yMid: number): number {
   switch (level) {
     case '1':
@@ -133,8 +146,9 @@ export function layout(model: NormModel, theme: Theme = defaultTheme): LayoutRes
   if (model.edges.length > 0) {
     const nodePoint = (a: NodeAnchor): Point => {
       const row = model.rows[a.row];
+      const char = Math.min(a.char, row.bricks.length);
       return [
-        x0 + (row.phase + a.char * row.period) * cw,
+        x0 + (row.phase + char * row.period) * cw,
         topY + a.row * rowH + t.waveHeight / 2,
       ];
     };
@@ -144,6 +158,7 @@ export function layout(model: NormModel, theme: Theme = defaultTheme): LayoutRes
       const a = model.nodes[e.from];
       const b = model.nodes[e.to];
       if (!a || !b) continue;
+      if (model.rows[a.row].isSpacer || model.rows[b.row].isSpacer) continue;
       drawEdge(shapes, nodePoint(a), nodePoint(b), e, t);
     }
   }
@@ -300,6 +315,7 @@ function addClockArrow(shapes: Shape[], x: number, yMid: number, dir: 'up' | 'do
 function drawEdge(shapes: Shape[], p1: Point, p2: Point, e: ParsedEdge, t: Theme): void {
   const [x1, y1] = p1;
   const [x2, y2] = p2;
+  if (Math.abs(x1 - x2) < 0.5 && Math.abs(y1 - y2) < 0.5) return; // degenerate self-edge
   let d: string;
   let endAngle: number;
   let startAngle: number;
@@ -331,7 +347,9 @@ function drawEdge(shapes: Shape[], p1: Point, p2: Point, e: ParsedEdge, t: Theme
   if (e.label) {
     const lx = (x1 + x2) / 2;
     const ly = (y1 + y2) / 2 - 4;
-    const w = e.label.length * (t.dataFontSize * 0.62) + 6;
+    // Estimate width per code point; CJK/wide glyphs are ~1em, Latin ~0.6em.
+    let w = 6;
+    for (const ch of e.label) w += (ch.codePointAt(0) ?? 0) > 0x2e7f ? t.dataFontSize : t.dataFontSize * 0.6;
     const h = t.dataFontSize + 4;
     shapes.push({ t: 'rect', x: lx - w / 2, y: ly - h + 3, w, h, rx: 3, cls: 'edge-label-bg' });
     shapes.push({ t: 'text', x: lx, y: ly, s: e.label, cls: 'edge-label', anchor: 'middle' });

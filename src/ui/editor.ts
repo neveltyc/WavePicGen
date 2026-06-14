@@ -58,6 +58,8 @@ export interface EditorOptions {
 
 export class Editor {
   private view: EditorView;
+  /** True while applying a programmatic setValue, to skip the onChange callback. */
+  private suppressChange = false;
 
   constructor(parent: HTMLElement, opts: EditorOptions) {
     this.view = new EditorView({
@@ -74,7 +76,7 @@ export class Editor {
           appTheme,
           EditorState.tabSize.of(2),
           EditorView.updateListener.of((u) => {
-            if (u.docChanged) opts.onChange(u.state.doc.toString());
+            if (u.docChanged && !this.suppressChange) opts.onChange(u.state.doc.toString());
           }),
         ],
       }),
@@ -87,13 +89,11 @@ export class Editor {
 
   setValue(text: string): void {
     if (text === this.getValue()) return;
+    this.suppressChange = true;
     this.view.dispatch({
       changes: { from: 0, to: this.view.state.doc.length, insert: text },
     });
-  }
-
-  focus(): void {
-    this.view.focus();
+    this.suppressChange = false;
   }
 
   destroy(): void {

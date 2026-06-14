@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cycleBrick } from './edit';
+import { cycleBrick, dragPaint } from './edit';
 import { parseSource } from './parse';
 
 function waveOf(source: string, row = 0): string {
@@ -46,5 +46,33 @@ describe('cycleBrick', () => {
     expect(cycleBrick(SRC, 5, 0)).toBeNull();
     expect(cycleBrick(SRC, 0, 99)).toBeNull();
     expect(cycleBrick('{ broken', 0, 0)).toBeNull();
+  });
+});
+
+describe('dragPaint', () => {
+  it('paints the anchor level across a forward range', () => {
+    expect(waveOf(dragPaint(`{ signal: [ { name: 'a', wave: '0100' } ] }`, 0, 1, 3)!)).toBe('0111');
+  });
+
+  it('paints across a backward range too', () => {
+    expect(waveOf(dragPaint(`{ signal: [ { name: 'a', wave: '0010' } ] }`, 0, 2, 0)!)).toBe('1110');
+  });
+
+  it('resolves a "." anchor back to its run level', () => {
+    expect(waveOf(dragPaint(`{ signal: [ { name: 'a', wave: '1...' } ] }`, 0, 2, 3)!)).toBe('1.11');
+  });
+
+  it('clamps the range to the wave length', () => {
+    expect(waveOf(dragPaint(`{ signal: [ { name: 'a', wave: '0100' } ] }`, 0, 1, 99)!)).toBe('0111');
+  });
+
+  it('refuses non-level anchors (clock/bus)', () => {
+    expect(dragPaint(`{ signal: [ { name: 'a', wave: 'pppp' } ] }`, 0, 1, 3)).toBeNull();
+    expect(dragPaint(`{ signal: [ { name: 'a', wave: '=.=.', data: ['A','B'] } ] }`, 0, 0, 2)).toBeNull();
+  });
+
+  it('returns null for bad source / out-of-range anchor', () => {
+    expect(dragPaint('{ broken', 0, 0, 1)).toBeNull();
+    expect(dragPaint(`{ signal: [ { name: 'a', wave: '01' } ] }`, 0, 9, 0)).toBeNull();
   });
 });

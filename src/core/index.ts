@@ -3,7 +3,7 @@ export { render } from './render';
 export type { RenderResult } from './render';
 export { parseSource, serializeDoc } from './parse';
 export type { ParseError, ParseResult } from './parse';
-export { normalize } from './model';
+export { normalize, signalSpecAt } from './model';
 export type {
   WaveDoc,
   SignalSpec,
@@ -20,9 +20,9 @@ export { resolveWave, isBoxKind } from './bricks';
 export type { Brick, BrickKind, WaveWarning } from './bricks';
 export { parseEdge } from './edges';
 export type { ParsedEdge, EdgeStyle } from './edges';
-export { layout } from './layout';
+export { layout, hitTest } from './layout';
 export type { LayoutResult, Shape, Point, HitMap } from './layout';
-export { cycleBrick, CLICK_STATES } from './edit';
+export { cycleBrick, dragPaint, CLICK_STATES } from './edit';
 export { toSvg } from './svg';
 export { defaultTheme } from './theme';
 export type { Theme } from './theme';

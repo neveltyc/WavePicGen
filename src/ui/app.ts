@@ -9,6 +9,8 @@ import {
   parseSource,
   serializeDoc,
   cycleBrick,
+  dragPaint,
+  hitTest,
   examples,
   defaultSource,
   type RenderResult,
@@ -26,7 +28,7 @@ const HELP_HTML = `
   <button class="close" data-help-close>✕ Close</button>
   <h2>WavePicGen — quick reference</h2>
   <p>Edit the WaveJSON / JSON5 source on the left; the diagram updates live. Use the command bar for quick edits and exports.</p>
-  <p><strong>Tip:</strong> click a signal's cycle in the preview to toggle its state (0 → 1 → x → z).</p>
+  <p><strong>Tip:</strong> click a signal's cycle to toggle 0 → 1 → x → z; <strong>drag horizontally</strong> to paint a level across cycles (move a transition / add delay).</p>
   <h3>Wave characters</h3>
   <table>
     <tr><td>p P n N</td><td>Clock — p/P positive, n/N negative; capitals add an active-edge arrow.</td></tr>
@@ -140,6 +142,8 @@ export class App {
 
   private zoom = 1;
   private last: RenderResult | null = null;
+  private drag: { row: number; anchor: number; source: string; moved: boolean; result: string | null } | null =
+    null;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -206,7 +210,9 @@ export class App {
       btn.addEventListener('click', () => this.onZoom(btn.getAttribute('data-z')!)),
     );
 
-    this.preview.addEventListener('click', (e) => this.onPreviewClick(e));
+    this.preview.addEventListener('mousedown', (e) => this.onPreviewMouseDown(e));
+    document.addEventListener('mousemove', (e) => this.onPreviewDrag(e));
+    document.addEventListener('mouseup', () => this.onPreviewDrop());
 
     this.setupSplitter();
 
@@ -302,33 +308,65 @@ export class App {
     this.zlabel.textContent = `${Math.round(this.zoom * 100)}%`;
   }
 
-  /** Click a signal's cycle in the preview to cycle its state (0 → 1 → x → z). */
-  private onPreviewClick(e: MouseEvent): void {
+  /** Map a mouse event to a (row, brick) on the rendered diagram, or null. */
+  private hitAt(e: MouseEvent): { row: number; brick: number } | null {
     const hm = this.last?.hitMap;
-    if (!this.last || this.last.error || !hm) return;
+    if (!this.last || this.last.error || !hm) return null;
     const svg = this.preview.querySelector('svg');
-    if (!svg) return;
+    if (!svg) return null;
     const rect = svg.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
+    if (rect.width === 0 || rect.height === 0) return null;
+    const x = (e.clientX - rect.left) * (this.last.width / rect.width);
+    const y = (e.clientY - rect.top) * (this.last.height / rect.height);
+    return hitTest(hm, x, y);
+  }
 
-    const ux = (e.clientX - rect.left) * (this.last.width / rect.width);
-    const uy = (e.clientY - rect.top) * (this.last.height / rect.height);
+  private onPreviewMouseDown(e: MouseEvent): void {
+    if (e.button !== 0) return;
+    const hit = this.hitAt(e);
+    if (!hit) return;
+    this.drag = { row: hit.row, anchor: hit.brick, source: this.editor.getValue(), moved: false, result: null };
+    e.preventDefault();
+  }
 
-    const row = Math.floor((uy - hm.topY) / hm.rowH);
-    if (row < 0 || row >= hm.rows.length) return;
-    const rowTop = hm.topY + row * hm.rowH;
-    if (uy < rowTop || uy > rowTop + hm.waveHeight) return;
-
-    const r = hm.rows[row];
-    if (r.isSpacer || r.bricks === 0) return;
-    const brick = Math.floor((ux - hm.x0 - r.phase * hm.cw) / (hm.cw * r.period));
-    if (brick < 0 || brick >= r.bricks) return;
-
-    const next = cycleBrick(this.editor.getValue(), row, brick);
-    if (next) {
-      this.setSource(next);
-      this.setStatus(`Toggled cycle ${brick} of signal ${row + 1} (click cycles 0/1/x/z).`, 'ok');
+  /** During a drag, paint the anchor level across swept cycles (live preview). */
+  private onPreviewDrag(e: MouseEvent): void {
+    const d = this.drag;
+    if (!d) return;
+    const hit = this.hitAt(e);
+    if (!hit || hit.row !== d.row || hit.brick === d.anchor) return;
+    const painted = dragPaint(d.source, d.row, d.anchor, hit.brick);
+    if (painted) {
+      d.moved = true;
+      d.result = painted;
+      this.renderPreviewOnly(painted);
     }
+  }
+
+  /** On release: commit a drag, or fall back to a single-cell toggle on a click. */
+  private onPreviewDrop(): void {
+    const d = this.drag;
+    if (!d) return;
+    this.drag = null;
+    if (d.moved && d.result) {
+      this.setSource(d.result);
+      this.setStatus('Dragged transition — painted level across cycles.', 'ok');
+    } else {
+      const next = cycleBrick(d.source, d.row, d.anchor);
+      if (next) {
+        this.setSource(next);
+        this.setStatus(`Toggled cycle ${d.anchor} of signal ${d.row + 1} (0/1/x/z).`, 'ok');
+      }
+    }
+  }
+
+  /** Render a transient source to the preview only (no editor/storage write). */
+  private renderPreviewOnly(src: string): void {
+    const r = render(src);
+    if (r.error) return;
+    this.last = r;
+    this.preview.innerHTML = r.svg;
+    this.applyZoom();
   }
 
   private setStatus(msg: string, kind: 'ok' | 'warn' | 'error'): void {

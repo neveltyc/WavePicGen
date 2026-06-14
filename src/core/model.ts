@@ -83,79 +83,101 @@ function toDataArray(d: string | string[] | undefined): string[] {
   return d.split(/\s+/).filter((s) => s.length > 0);
 }
 
-function isLaneArray(x: Lane): x is LaneArray {
-  return Array.isArray(x);
+interface FlatLane {
+  spec: SignalSpec;
+  depth: number;
 }
 
-/** Flatten a WaveDoc into an explicit, layout-ready model. */
-export function normalize(doc: WaveDoc): NormModel {
-  const rows: NormSignal[] = [];
+/**
+ * The single canonical lane traversal: depth-first, each object is a row, arrays
+ * are groups (an optional leading string is the label). Both `normalize` and
+ * `signalSpecAt` use this so row indices always agree (no drift between rendering
+ * and editing).
+ */
+function flattenLanes(
+  lanes: Lane[],
+  warnings?: WaveWarning[],
+): { flats: FlatLane[]; groups: NormGroup[] } {
+  const flats: FlatLane[] = [];
   const groups: NormGroup[] = [];
-  const nodes: Record<string, NodeAnchor> = {};
-  const warnings: WaveWarning[] = [];
-
-  const walk = (items: Lane[], depth: number): void => {
+  const walk = (items: unknown[], depth: number): void => {
     for (const item of items) {
-      if (isLaneArray(item)) {
+      if (Array.isArray(item)) {
+        let rest: unknown[] = item;
         let label = '';
-        let rest: Array<string | Lane> = item;
         if (item.length > 0 && typeof item[0] === 'string') {
           label = item[0];
           rest = item.slice(1);
         }
-        const firstRow = rows.length;
-        const children = rest.filter((x): x is Lane => typeof x !== 'string');
-        walk(children, depth + 1);
-        const lastRow = rows.length - 1;
-        if (label && lastRow >= firstRow) {
-          groups.push({ label, firstRow, lastRow, depth });
-        }
+        const firstRow = flats.length;
+        walk(rest, depth + 1);
+        const lastRow = flats.length - 1;
+        if (label && lastRow >= firstRow) groups.push({ label, firstRow, lastRow, depth });
+      } else if (item !== null && typeof item === 'object') {
+        flats.push({ spec: item as SignalSpec, depth });
       } else {
-        // Runtime guard: malformed JSON can put primitives/null in `signal`.
-        const raw = item as unknown;
-        if (raw === null || typeof raw !== 'object') {
-          warnings.push({ message: `Ignored non-object signal entry: ${JSON.stringify(raw)}.` });
-          continue;
-        }
-        const name = item.name ?? '';
-        const isSpacer = item.wave == null || item.wave === '';
-        let waveStr = isSpacer ? '' : String(item.wave);
-        if (waveStr.length > MAX_CYCLES) {
-          warnings.push({ message: `Wave for "${name}" truncated to ${MAX_CYCLES} cycles.` });
-          waveStr = waveStr.slice(0, MAX_CYCLES);
-        }
-        const period =
-          typeof item.period === 'number' && Number.isFinite(item.period) && item.period > 0
-            ? Math.min(Math.floor(item.period), 256)
-            : 1;
-        let phase = typeof item.phase === 'number' && Number.isFinite(item.phase) ? item.phase : 0;
-        if (phase < 0) {
-          warnings.push({ message: `Negative phase on "${name}" clamped to 0.` });
-          phase = 0;
-        }
-        phase = Math.min(phase, MAX_CYCLES);
-        const rowIndex = rows.length;
-        rows.push({
-          name,
-          bricks: isSpacer ? [] : resolveWave(waveStr, toDataArray(item.data), warnings),
-          period,
-          phase,
-          depth,
-          isSpacer,
-        });
-        if (typeof item.node === 'string') {
-          for (let i = 0; i < item.node.length; i++) {
-            const ch = item.node[i];
-            if (ch && ch !== '.' && ch !== ' ' && !(ch in nodes)) {
-              nodes[ch] = { row: rowIndex, char: i };
-            }
-          }
-        }
+        // Anything that is not a group (array) or a signal (object) is malformed;
+        // group labels are sliced off above, so any string here is also stray.
+        warnings?.push({ message: `Ignored invalid signal entry: ${JSON.stringify(item)}.` });
       }
     }
   };
+  walk(lanes, 0);
+  return { flats, groups };
+}
 
-  walk(doc.signal ?? [], 0);
+/** The row-th signal in document order, or null. Mirrors `normalize`'s rows. */
+export function signalSpecAt(lanes: Lane[], row: number): SignalSpec | null {
+  return flattenLanes(lanes).flats[row]?.spec ?? null;
+}
+
+/** Flatten a WaveDoc into an explicit, layout-ready model. */
+export function normalize(doc: WaveDoc): NormModel {
+  const warnings: WaveWarning[] = [];
+  const { flats, groups } = flattenLanes(doc.signal ?? [], warnings);
+  const rows: NormSignal[] = [];
+  const nodes: Record<string, NodeAnchor> = {};
+
+  flats.forEach(({ spec, depth }, rowIndex) => {
+    const name = spec.name ?? '';
+    const isSpacer = spec.wave == null || spec.wave === '';
+    let waveStr = isSpacer ? '' : String(spec.wave);
+    if (waveStr.length > MAX_CYCLES) {
+      warnings.push({ message: `Wave for "${name}" truncated to ${MAX_CYCLES} cycles.` });
+      waveStr = waveStr.slice(0, MAX_CYCLES);
+    }
+    const period =
+      typeof spec.period === 'number' && Number.isFinite(spec.period) && spec.period > 0
+        ? Math.min(Math.floor(spec.period), 256)
+        : 1;
+    let phase = typeof spec.phase === 'number' && Number.isFinite(spec.phase) ? spec.phase : 0;
+    if (phase < 0) {
+      warnings.push({ message: `Negative phase on "${name}" clamped to 0.` });
+      phase = 0;
+    }
+    phase = Math.min(phase, MAX_CYCLES);
+    rows.push({
+      name,
+      bricks: isSpacer ? [] : resolveWave(waveStr, toDataArray(spec.data), warnings),
+      period,
+      phase,
+      depth,
+      isSpacer,
+    });
+
+    // Node anchors are stored as BRICK columns. resolveWave collapses spaces, so
+    // align the node string to the wave and count non-space wave chars.
+    if (typeof spec.node === 'string') {
+      let brickCol = 0;
+      for (let i = 0; i < spec.node.length; i++) {
+        const nc = spec.node[i];
+        if (nc && nc !== '.' && nc !== ' ' && !(nc in nodes)) {
+          nodes[nc] = { row: rowIndex, char: brickCol };
+        }
+        if (waveStr[i] !== undefined && waveStr[i] !== ' ') brickCol++;
+      }
+    }
+  });
 
   const rawHscale = doc.config?.hscale;
   const hscale =
