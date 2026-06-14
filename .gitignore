@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+tmp/
+*.local
+.DS_Store
+.vite/
+*.log
+
+# scratch / ad-hoc files at repo root (real source lives in src/, scripts/, docs/)
+/*.mjs
+/*.cjs
+/__*
+/probe*
+/scratch*
+/*.scratch.*
