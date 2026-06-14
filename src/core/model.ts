@@ -131,6 +131,11 @@ export function signalSpecAt(lanes: Lane[], row: number): SignalSpec | null {
   return flattenLanes(lanes).flats[row]?.spec ?? null;
 }
 
+/** All signal specs in document (row) order. */
+export function signalSpecs(lanes: Lane[]): SignalSpec[] {
+  return flattenLanes(lanes).flats.map((f) => f.spec);
+}
+
 /** Flatten a WaveDoc into an explicit, layout-ready model. */
 export function normalize(doc: WaveDoc): NormModel {
   const warnings: WaveWarning[] = [];

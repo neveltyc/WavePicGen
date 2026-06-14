@@ -61,6 +61,18 @@ describe('applyCommand', () => {
     expect(applyCommand(EMPTY, 'set hscale=-1').error).toBeDefined();
   });
 
+  it('inserts / delays / deletes aligned cycles', () => {
+    const SRC = `{ signal: [ { name: 'a', wave: '01' } ] }`;
+    expect((signalsOf(applyCommand(SRC, 'insert at=1').source!)[0] as { wave: string }).wave).toBe('0.1');
+    expect((signalsOf(applyCommand(SRC, 'delay at=1 count=2').source!)[0] as { wave: string }).wave).toBe('0..1');
+    expect((signalsOf(applyCommand(`{ signal: [ { name: 'a', wave: '0.1' } ] }`, 'delete at=1').source!)[0] as { wave: string }).wave).toBe('01');
+  });
+
+  it('errors when insert/delete lack a valid at=', () => {
+    expect(applyCommand(`{ signal: [] }`, 'insert').error).toBeDefined();
+    expect(applyCommand(`{ signal: [] }`, 'delete at=-1').error).toBeDefined();
+  });
+
   it('loads an example by id', () => {
     const r = applyCommand(EMPTY, 'example bus');
     expect(r.source).toContain('bus');

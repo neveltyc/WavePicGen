@@ -4,7 +4,7 @@
  * keeps GUI edits, text and commands on one source of truth.
  */
 import { parseSource, serializeDoc } from './parse';
-import { signalSpecAt } from './model';
+import { signalSpecAt, signalSpecs } from './model';
 
 /** States that a click cycles through, in order. */
 export const CLICK_STATES = ['0', '1', 'x', 'z'] as const;
@@ -72,5 +72,39 @@ export function dragPaint(
   const chars = spec.wave.split('');
   for (let b = lo; b <= hi; b++) chars[pos[b]!] = ch;
   spec.wave = chars.join('');
+  return serializeDoc(doc);
+}
+
+/**
+ * Insert `count` held cycles at brick column `at` across every signal (an
+ * aligned time column = "add delay"). Each signal holds its prior value via '.'.
+ */
+export function insertCycles(source: string, at: number, count = 1): string | null {
+  if (!Number.isFinite(at) || at < 0 || count < 1) return null;
+  const { doc } = parseSource(source);
+  if (!doc) return null;
+  for (const spec of signalSpecs(doc.signal)) {
+    if (typeof spec.wave !== 'string' || spec.wave === '') continue;
+    const pos = significantPositions(spec.wave);
+    const charIdx = at < pos.length ? pos[at]! : spec.wave.length;
+    spec.wave = spec.wave.slice(0, charIdx) + '.'.repeat(count) + spec.wave.slice(charIdx);
+  }
+  return serializeDoc(doc);
+}
+
+/** Delete `count` cycles starting at brick column `at` across every signal. */
+export function deleteCycles(source: string, at: number, count = 1): string | null {
+  if (!Number.isFinite(at) || at < 0 || count < 1) return null;
+  const { doc } = parseSource(source);
+  if (!doc) return null;
+  for (const spec of signalSpecs(doc.signal)) {
+    if (typeof spec.wave !== 'string' || spec.wave === '') continue;
+    const pos = significantPositions(spec.wave);
+    if (at >= pos.length) continue;
+    const start = pos[at]!;
+    const endBrick = Math.min(at + count, pos.length);
+    const end = endBrick < pos.length ? pos[endBrick]! : spec.wave.length;
+    spec.wave = spec.wave.slice(0, start) + spec.wave.slice(end);
+  }
   return serializeDoc(doc);
 }

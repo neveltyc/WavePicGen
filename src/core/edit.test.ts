@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cycleBrick, dragPaint } from './edit';
+import { cycleBrick, dragPaint, insertCycles, deleteCycles } from './edit';
 import { parseSource } from './parse';
 
 function waveOf(source: string, row = 0): string {
@@ -74,5 +74,37 @@ describe('dragPaint', () => {
   it('returns null for bad source / out-of-range anchor', () => {
     expect(dragPaint('{ broken', 0, 0, 1)).toBeNull();
     expect(dragPaint(`{ signal: [ { name: 'a', wave: '01' } ] }`, 0, 9, 0)).toBeNull();
+  });
+});
+
+describe('insertCycles / deleteCycles', () => {
+  const TWO = `{ signal: [ { name: 'a', wave: '01' }, { name: 'b', wave: '10' } ] }`;
+
+  it('inserts an aligned held column across every signal', () => {
+    const s = insertCycles(TWO, 1, 1)!;
+    expect(waveOf(s, 0)).toBe('0.1');
+    expect(waveOf(s, 1)).toBe('1.0');
+  });
+
+  it('inserts multiple cycles and appends at the end', () => {
+    expect(waveOf(insertCycles(TWO, 1, 2)!, 0)).toBe('0..1');
+    expect(waveOf(insertCycles(TWO, 2, 1)!, 0)).toBe('01.');
+  });
+
+  it('deletes a column across every signal (inverse of insert)', () => {
+    const s = deleteCycles(`{ signal: [ { name: 'a', wave: '0.1' }, { name: 'b', wave: '1.0' } ] }`, 1, 1)!;
+    expect(waveOf(s, 0)).toBe('01');
+    expect(waveOf(s, 1)).toBe('10');
+  });
+
+  it('skips spacer rows but still edits real signals', () => {
+    const s = insertCycles(`{ signal: [ {}, { name: 'b', wave: '01' } ] }`, 1, 1)!;
+    expect(waveOf(s, 1)).toBe('0.1');
+  });
+
+  it('is a no-op past the end for delete and validates args', () => {
+    expect(waveOf(deleteCycles(TWO, 9, 1)!, 0)).toBe('01');
+    expect(insertCycles(TWO, -1, 1)).toBeNull();
+    expect(insertCycles('{ broken', 0, 1)).toBeNull();
   });
 });

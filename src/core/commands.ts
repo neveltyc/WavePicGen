@@ -8,6 +8,7 @@
 import { parseSource, serializeDoc } from './parse';
 import type { Lane, SignalSpec, WaveDoc } from './model';
 import { examples } from './examples';
+import { insertCycles, deleteCycles } from './edit';
 import { clampInt } from './util';
 
 export type ExportFormat = 'svg' | 'png' | 'jpeg' | 'pdf' | 'tikz';
@@ -70,7 +71,8 @@ function repeat(ch: string, n: number): string {
 const HELP =
   'commands: add clock <NAME> [cycles=N] | add signal <NAME> [wave=..] | ' +
   'add bus <NAME> [cycles=N] | set hscale=<N> | set head="text" | ' +
-  'example <id> | clear | export <svg|png|jpeg> [scale=N] | help';
+  'insert at=<N> [count=M] | delay at=<N> [count=M] | delete at=<N> [count=M] | ' +
+  'example <id> | clear | export <svg|png|jpeg|pdf|tikz> [scale=N] | help';
 
 /** Apply a single command line against the current source. Never throws. */
 export function applyCommand(source: string, line: string): CommandResult {
@@ -148,6 +150,21 @@ export function applyCommand(source: string, line: string): CommandResult {
     }
     (doc.signal as Lane[]).push(sig);
     return { source: serializeDoc(doc), message: `Added ${kind || 'signal'} '${name}'.` };
+  }
+
+  if (cmd === 'insert' || cmd === 'delay' || cmd === 'delete') {
+    const { named } = parseArgs(tokens);
+    const at = Number(named.at);
+    if (!Number.isFinite(at) || at < 0) {
+      return { error: `usage: ${cmd} at=<cycle> [count=N]` };
+    }
+    const count = clampInt(named.count, 1, 4096, 1);
+    const pos = Math.floor(at);
+    const next =
+      cmd === 'delete' ? deleteCycles(source, pos, count) : insertCycles(source, pos, count);
+    if (!next) return { error: `Could not ${cmd} cycles.` };
+    const verb = cmd === 'delete' ? 'Deleted' : 'Inserted';
+    return { source: next, message: `${verb} ${count} cycle(s) at ${pos}.` };
   }
 
   return { error: `Unknown command '${cmd}'. ${HELP}` };
